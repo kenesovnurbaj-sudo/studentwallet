@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api } from './api.js'
 import { money, shortDate } from './format.js'
 
-export default function ExpenseList({ expenses, categories, filter, onFilter, onChanged }) {
+export default function ExpenseList({ expenses, categories, filter, onFilter, onChanged, onEdit, editingId }) {
   const [error, setError] = useState('')
   const byId = Object.fromEntries(categories.map((c) => [c.id, c]))
 
@@ -12,7 +12,7 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
     setError('')
     try {
       await api.deleteExpense(item.id)
-      onChanged()
+      onChanged(item.id)
     } catch (err) {
       setError(err.message)
     }
@@ -50,16 +50,18 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
           {expenses.map((item) => {
             const cat = byId[item.category_id]
             const income = item.type === 'income'
+            const title = item.note || (cat ? cat.name : 'Без названия')
             return (
-              <li key={item.id} className="row-item">
+              <li key={item.id} className={`row-item ${editingId === item.id ? 'is-editing' : ''}`}>
                 <span className="row-icon" aria-hidden="true">
                   {cat ? cat.icon : '🧾'}
                 </span>
                 <span className="row-main">
-                  <span className="row-title">{item.note || (cat ? cat.name : 'Без названия')}</span>
+                  <span className="row-title">{title}</span>
                   <span className="row-sub">
                     {cat ? cat.name : 'Без категории'}, {shortDate(item.spent_at)}
                     {item.source === 'siri' ? ', через Siri' : ''}
+                    {item.paid_total != null ? `, ваша доля из чека ${money(item.paid_total)}` : ''}
                   </span>
                 </span>
                 <span className={`row-amount ${income ? 'plus' : ''}`}>
@@ -69,8 +71,18 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
                 <button
                   className="icon-btn"
                   type="button"
+                  onClick={() => onEdit(item)}
+                  aria-label={`Изменить запись «${title}»`}
+                  title="Изменить"
+                >
+                  ✎
+                </button>
+                <button
+                  className="icon-btn"
+                  type="button"
                   onClick={() => remove(item)}
-                  aria-label={`Удалить запись на ${money(item.amount)}`}
+                  aria-label={`Удалить запись «${title}»`}
+                  title="Удалить"
                 >
                   ×
                 </button>

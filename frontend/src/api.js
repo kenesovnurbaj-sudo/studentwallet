@@ -28,7 +28,7 @@ const KNOWN_ERRORS = {
 }
 
 function errorText(data, status) {
-  if (status === 422) return 'Проверьте поля: пароль не короче 8 символов, сумма больше нуля'
+  if (status === 422) return 'Проверьте поля: сумма больше нуля, email написан правильно, пароль не короче 8 символов'
   const detail = data && data.detail
   if (typeof detail === 'string') return KNOWN_ERRORS[detail] || detail
   if (status >= 500) return 'Ошибка сервера. Попробуйте ещё раз'
@@ -76,7 +76,17 @@ export const api = {
   expenses: (categoryId) =>
     request(`/expenses${categoryId ? `?category_id=${encodeURIComponent(categoryId)}` : ''}`),
   addExpense: (data) => request('/expenses', { method: 'POST', body: data }),
+  updateExpense: (id, data) => request(`/expenses/${id}`, { method: 'PUT', body: data }),
+  addCategory: (data) => request('/categories', { method: 'POST', body: data }),
   deleteExpense: (id) => request(`/expenses/${id}`, { method: 'DELETE' }),
   setBudget: (data) => request('/budgets', { method: 'PUT', body: data }),
   summary: (month) => request(`/budget/summary?month=${encodeURIComponent(month)}`),
+  // Делёжка счёта и долги
+  splitPreview: (data) => request('/expenses/split-preview', { method: 'POST', body: data }),
+  debtsOwedToMe: () => request('/debts/owed-to-me'),
+  debtsIOwe: () => request('/debts/i-owe'),
+  markPaid: (shareId, categoryId) =>
+    request(`/shares/${shareId}/mark-paid`, { method: 'POST', body: { category_id: categoryId } }),
+  confirmShare: (shareId) => request(`/shares/${shareId}/confirm`, { method: 'POST' }),
+  rejectShare: (shareId) => request(`/shares/${shareId}/reject`, { method: 'POST' }),
 }

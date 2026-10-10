@@ -2,16 +2,28 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api.js'
 import { monthISO } from './format.js'
 import Hero from './Hero.jsx'
+import Analytics from './Analytics.jsx'
 import ExpenseForm from './ExpenseForm.jsx'
 import ExpenseList from './ExpenseList.jsx'
+import Debts from './Debts.jsx'
 
 export default function Dashboard({ user, onLogout }) {
   const month = monthISO()
   const [categories, setCategories] = useState([])
-  const [expenses, setExpenses] = useState([])
+  const [expenses, setExpenses] = useState([]) // все записи; фильтр истории применяется ниже
   const [summary, setSummary] = useState(undefined) // undefined = грузится, null = бюджет не задан
   const [filter, setFilter] = useState('')
+  const [editing, setEditing] = useState(null)
   const [error, setError] = useState('')
+  const [debtsVersion, setDebtsVersion] = useState(0) // растёт, когда долги нужно перечитать
+
+  const loadCategories = useCallback(async () => {
+    try {
+      setCategories(await api.categories())
+    } catch (err) {
+      setError(err.message)
+    }
+  }, [])
 
   const loadSummary = useCallback(async () => {
     try {
@@ -24,15 +36,15 @@ export default function Dashboard({ user, onLogout }) {
 
   const loadExpenses = useCallback(async () => {
     try {
-      setExpenses(await api.expenses(filter))
+      setExpenses(await api.expenses())
     } catch (err) {
       setError(err.message)
     }
-  }, [filter])
+  }, [])
 
   useEffect(() => {
-    api.categories().then(setCategories).catch((err) => setError(err.message))
-  }, [])
+    loadCategories()
+  }, [loadCategories])
   useEffect(() => {
     loadSummary()
   }, [loadSummary])
@@ -44,7 +56,20 @@ export default function Dashboard({ user, onLogout }) {
     setError('')
     loadSummary()
     loadExpenses()
+    setDebtsVersion((v) => v + 1)
   }
+
+  const saved = () => {
+    setEditing(null)
+    refresh()
+  }
+
+  const deleted = (id) => {
+    if (editing && editing.id === id) setEditing(null)
+    refresh()
+  }
+
+  const visible = filter ? expenses.filter((e) => String(e.category_id) === String(filter)) : expenses
 
   return (
     <div className="page">
@@ -65,13 +90,30 @@ export default function Dashboard({ user, onLogout }) {
           </p>
         )}
         <Hero summary={summary} month={month} onSaved={loadSummary} />
-        <ExpenseForm categories={categories} onAdded={refresh} />
+        <Debts
+          categories={categories}
+          version={debtsVersion}
+          onChanged={() => {
+            loadSummary()
+            loadExpenses()
+          }}
+        />
+        <ExpenseForm
+          categories={categories}
+          editing={editing}
+          onSaved={saved}
+          onCancelEdit={() => setEditing(null)}
+          onCategoryCreated={loadCategories}
+        />
+        <Analytics expenses={expenses} categories={categories} month={month} />
         <ExpenseList
-          expenses={expenses}
+          expenses={visible}
           categories={categories}
           filter={filter}
           onFilter={setFilter}
-          onChanged={refresh}
+          onChanged={deleted}
+          onEdit={setEditing}
+          editingId={editing ? editing.id : null}
         />
       </main>
     </div>
