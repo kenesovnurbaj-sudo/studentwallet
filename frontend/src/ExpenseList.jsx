@@ -98,10 +98,9 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
 
       {selecting && (
         <div className="bulk-bar">
-          <label className="check">
-            <input type="checkbox" checked={allPicked} onChange={toggleAll} />
-            Все найденные ({shown.length})
-          </label>
+          <button className="secondary" type="button" onClick={toggleAll} disabled={shown.length === 0}>
+            {allPicked ? 'Снять выбор' : `Выбрать все (${shown.length})`}
+          </button>
           <select value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Новая категория">
             <option value="">Новая категория…</option>
             {categories.map((c) => (
