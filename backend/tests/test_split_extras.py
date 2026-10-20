@@ -240,3 +240,26 @@ def test_ensure_schema_upgrades_old_sqlite_database():
         assert c.execute(text("SELECT id, debtor_id, debtor_name, remind_count FROM expense_shares")).fetchall() == [(1, 2, None, 0)]
         c.execute(text("INSERT INTO expense_shares (expense_id,payer_id,debtor_id,debtor_name,amount,status,created_at,remind_count) VALUES (1,1,NULL,'Aida',50,'pending','2026-10-02',0)"))
         assert c.execute(text("SELECT count(*) FROM expense_shares")).scalar() == 2
+
+
+def test_items_mode_with_guest_and_not_participating_via_api(client):
+    """Тот же запрос, что отправляет форма: гость по имени, друг по email, ключи едоков name:... и email."""
+    a = register_and_login(client, A)
+    register_and_login(client, B)
+    body = {
+        "category_id": cat_id(client, a),
+        "note": "pizza night",
+        "split": {
+            "mode": "items",
+            "participants": [{"email": B}, {"name": "Aida"}],
+            "items": [{"name": "Pizza", "price": 5000, "eaters": [B, "name:aida"]}, {"name": "Cola", "price": 1000, "eaters": [B]}],
+            "tip_percent": 10,
+            "tax_percent": 12,
+            "i_participate": False,
+        },
+    }
+    r = client.post("/api/expenses", headers=a, json=body)
+    assert r.status_code == 201, r.text
+    assert (r.json()["amount"], r.json()["paid_total"]) == (0, 7320)  # 6000 + 10% + 12%
+    debts = {d["debtor_name"]: d["amount"] for d in client.get("/api/debts/owed-to-me", headers=a).json()}
+    assert sum(debts.values()) == 7320 and debts["Aida"] == 3050  # 2500 * 1.22

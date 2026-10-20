@@ -8,7 +8,11 @@ const sum = (list) => list.reduce((total, d) => total + d.amount, 0)
 function groupBy(list, side) {
   const groups = new Map()
   for (const item of list) {
-    const person = item[side]
+    // Друг без аккаунта: у него нет id, группируем по имени
+    const person =
+      side === 'debtor' && item.guest
+        ? { id: `guest:${item.debtor_name.toLowerCase()}`, name: item.debtor_name, email: null, guest: true }
+        : item[side]
     if (!groups.has(person.id)) groups.set(person.id, { person, items: [] })
     groups.get(person.id).items.push(item)
   }
@@ -22,6 +26,7 @@ export default function Debts({ categories, version, onChanged }) {
   const [tabChosen, setTabChosen] = useState(false)
   const [categoryId, setCategoryId] = useState('')
   const [busyId, setBusyId] = useState(null)
+  const [copiedId, setCopiedId] = useState(null)
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -46,7 +51,8 @@ export default function Debts({ categories, version, onChanged }) {
   useEffect(() => {
     if (tabChosen || owed === null || owe === null) return
     const mustPay = owe.some((d) => d.status === 'pending')
-    if (owed.length === 0 && mustPay) setTab('owe')
+    const reminded = owe.some((d) => d.status === 'pending' && d.reminded_at)
+    if (reminded || (owed.length === 0 && mustPay)) setTab('owe')
   }, [owed, owe, tabChosen])
 
   if (owed === null || owe === null) return null
@@ -70,6 +76,19 @@ export default function Debts({ categories, version, onChanged }) {
   const owedTotal = sum(owed)
   const oweTotal = sum(owe.filter((d) => d.status === 'pending'))
   const toConfirm = owed.filter((d) => d.status === 'marked_paid').length
+  const remindedCount = owe.filter((d) => d.status === 'pending' && d.reminded_at).length
+
+  // Текст для друга без аккаунта: копируется, а отправляет его сам плательщик
+  async function copyReminder(person, d) {
+    const text = `Hi ${person.name}! A quick reminder: you owe me ${money(d.amount)} for ${d.note || 'our shared bill'} (${shortDate(d.spent_at)}). Please send it when you can. Thanks!`
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedId(d.id)
+      setTimeout(() => setCopiedId((id) => (id === d.id ? null : id)), 2500)
+    } catch {
+      window.prompt('Copy this message and send it to your friend:', text)
+    }
+  }
 
   const choose = (value) => {
     setTab(value)
@@ -100,6 +119,13 @@ export default function Debts({ categories, version, onChanged }) {
         </p>
       )}
 
+      {tab === 'owe' && remindedCount > 0 && (
+        <p className="notice">
+          {remindedCount === 1 ? 'A friend reminded you about a debt' : `${remindedCount} friends reminded you about debts`}. Pay them
+          back and press “I paid”.
+        </p>
+      )}
+
       {error && (
         <p className="error" role="alert">
           {error}
@@ -114,7 +140,7 @@ export default function Debts({ categories, version, onChanged }) {
               <div className="debt-head">
                 <span>
                   <b>{person.name}</b>
-                  <small>{person.email}</small>
+                  <small>{person.email || 'No account'}</small>
                 </span>
                 <b>{money(sum(items))}</b>
               </div>
@@ -155,15 +181,34 @@ export default function Debts({ categories, version, onChanged }) {
                       ) : (
                         <>
                           <span className="badge">awaiting payment</span>
+                          {d.remind_count > 0 && <span className="badge">reminded {shortDate(d.reminded_at)}</span>}
+                          {d.guest ? (
+                            <button type="button" className="secondary" onClick={() => copyReminder(person, d)}>
+                              {copiedId === d.id ? 'Copied ✓' : 'Copy reminder'}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="secondary"
+                              disabled={busyId === d.id}
+                              onClick={() => act(d, () => api.remindShare(d.id))}
+                            >
+                              {d.remind_count > 0 ? 'Remind again' : 'Remind'}
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="link"
                             disabled={busyId === d.id}
                             onClick={() =>
-                              act(d, () => api.confirmShare(d.id), `Close the ${money(d.amount)} debt: did ${person.name} pay you back (for example, in cash)?`)
+                              act(
+                                d,
+                                () => api.confirmShare(d.id),
+                                `Close the ${money(d.amount)} debt: did ${person.name} pay you back${d.guest ? '' : ' (for example, in cash)'}?`,
+                              )
                             }
                           >
-                            Paid outside the app
+                            {d.guest ? 'Received' : 'Paid outside the app'}
                           </button>
                         </>
                       )}
@@ -215,6 +260,8 @@ export default function Debts({ categories, version, onChanged }) {
                       {d.status === 'marked_paid' ? (
                         <span className="badge wait">waiting for {person.name} to confirm</span>
                       ) : (
+                        <>
+                        {d.reminded_at && <span className="badge wait">reminded {shortDate(d.reminded_at)}</span>}
                         <button
                           type="button"
                           className="primary small"
@@ -225,6 +272,7 @@ export default function Debts({ categories, version, onChanged }) {
                         >
                           I paid
                         </button>
+                        </>
                       )}
                     </span>
                   </li>

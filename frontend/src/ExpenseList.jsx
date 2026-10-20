@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { api } from './api.js'
 import { money, shortDate } from './format.js'
+import SplitExpenseModal from './SplitExpenseModal.jsx'
 
 export default function ExpenseList({ expenses, categories, filter, onFilter, onChanged, onEdit, editingId }) {
   const [error, setError] = useState('')
@@ -9,6 +10,7 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
   const [picked, setPicked] = useState(() => new Set())
   const [target, setTarget] = useState('')
   const [busy, setBusy] = useState(false)
+  const [splitting, setSplitting] = useState(null) // запись, которую делим с друзьями
   const byId = Object.fromEntries(categories.map((c) => [c.id, c]))
 
   async function remove(item) {
@@ -158,6 +160,17 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
                   {income ? '+' : '−'}
                   {money(item.amount)}
                 </span>
+                {!income && item.paid_total == null && !selecting && (
+                  <button
+                    className="split-btn"
+                    type="button"
+                    onClick={() => setSplitting(item)}
+                    aria-label={`Split “${title}” with friends`}
+                    title="Split with friends"
+                  >
+                    Split
+                  </button>
+                )}
                 <button
                   className="icon-btn"
                   type="button"
@@ -180,6 +193,9 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
             )
           })}
         </ul>
+      )}
+      {splitting && (
+        <SplitExpenseModal expense={splitting} onClose={() => setSplitting(null)} onDone={() => onChanged()} />
       )}
     </section>
   )

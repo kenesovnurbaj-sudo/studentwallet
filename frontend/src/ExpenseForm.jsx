@@ -278,14 +278,17 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
 
         {!editing && type === 'expense' && (
           <>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={split.on}
-                onChange={(e) => setSplit({ ...split, on: e.target.checked })}
-              />
-              <span>I paid for friends: they will pay back their share</span>
-            </label>
+            <div className="split-toggle">
+              <button
+                type="button"
+                className={`secondary ${split.on ? 'on' : ''}`}
+                aria-pressed={split.on}
+                onClick={() => setSplit({ ...split, on: !split.on })}
+              >
+                {split.on ? '✓ Splitting with friends' : '+ Split with friends'}
+              </button>
+              <span className="muted small">Paid for others? Split the bill and track who owes you.</span>
+            </div>
             {split.on && <SplitEditor split={split} amount={amount} onChange={setSplit} />}
           </>
         )}
