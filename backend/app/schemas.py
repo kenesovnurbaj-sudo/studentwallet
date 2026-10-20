@@ -107,16 +107,39 @@ class SplitItem(BaseModel):
     eaters: list[str] = Field(min_length=1, max_length=21)  # "me" или email друга
 
 
+GUEST_PREFIX = "name:"
+
+
 class SplitParticipant(BaseModel):
-    email: EmailStr
+    """Друг с аккаунтом (email) или гость без аккаунта (имя). Нужно указать что-то одно."""
+
+    email: EmailStr | None = None
+    name: str | None = Field(default=None, max_length=60)
     amount: float | None = Field(default=None, gt=0)  # нужна только в режиме custom
+
+    @model_validator(mode="after")
+    def _email_or_name(self):
+        name = " ".join((self.name or "").split())
+        if "@" in name:
+            raise ValueError("A guest name cannot contain @. Use the email field for registered friends")
+        if (self.email is None) == (not name):
+            raise ValueError("Give either an email or a name")
+        self.name = name or None
+        return self
+
+    @property
+    def key(self) -> str:
+        """Так участник обозначается в расчётах и в позициях: email или «name:имя»."""
+        return self.email.lower() if self.email else GUEST_PREFIX + (self.name or "").lower()
 
 
 class SplitIn(BaseModel):
     mode: Literal["equal", "custom", "items"]
     participants: list[SplitParticipant] = Field(min_length=1, max_length=20)  # только друзья
     items: list[SplitItem] = Field(default_factory=list, max_length=50)
-    tip_percent: float = Field(default=0, ge=0, le=100)  # обслуживание, % к чеку
+    tip_percent: float = Field(default=0, ge=0, le=100)  # чаевые, % к чеку
+    tax_percent: float = Field(default=0, ge=0, le=100)  # налог, % к чеку
+    i_participate: bool = True  # False: вы платили только за других и сами не ели
 
 
 def _amount_required(amount: float | None, split: "SplitIn | None") -> None:
@@ -156,15 +179,19 @@ class SplitPreviewIn(BaseModel):
 
 
 class SplitLine(BaseModel):
-    email: str
+    key: str  # email или «name:имя»
+    email: str | None
     name: str
     amount: float
-    found: bool  # есть ли друг среди пользователей сайта
+    found: bool  # есть ли друг среди пользователей сайта (для гостей всегда True)
+    guest: bool = False  # друг без аккаунта
 
 
 class SplitPreviewOut(BaseModel):
     total: float
-    service: float = 0  # сколько из total составляет обслуживание
+    service: float = 0  # сколько из total составляют чаевые и налог вместе
+    tip: float = 0
+    tax: float = 0
     my_share: float
     lines: list[SplitLine]
 
@@ -218,7 +245,11 @@ class ShareOut(BaseModel):
     spent_at: date  # дата траты
     paid_total: float | None
     payer: UserBrief
-    debtor: UserBrief
+    debtor: UserBrief | None  # None, если друг без аккаунта
+    debtor_name: str  # имя должника: пользователя сайта или гостя
+    guest: bool = False
+    reminded_at: datetime | None = None
+    remind_count: int = 0
     created_at: datetime
     marked_at: datetime | None
     settled_at: datetime | None
@@ -232,6 +263,7 @@ class DebtSummary(BaseModel):
     owed_to_me: float  # сколько друзья ещё должны вам
     i_owe: float  # сколько должны вы
     to_confirm: int  # сколько возвратов ждут вашего подтверждения
+    reminded: int = 0  # сколько ваших долгов вам уже напомнили
 
 
 class BudgetSet(BaseModel):

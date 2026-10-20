@@ -8,8 +8,11 @@
   custom - вы вводите сумму каждого друга, остаток остаётся вам
   items  - по блюдам: у каждой позиции отмечено, кто её ел
 
-Во всех режимах можно добавить процент обслуживания: он ложится сверху чека
-и делится пропорционально тому, сколько заказал каждый.
+Во всех режимах можно добавить чаевые и налог (в процентах, каждый отдельно): они ложатся сверху чека
+и делятся пропорционально тому, сколько заказал каждый. Если вы платили только за других и сами не ели
+(participate=False), ваша доля равна нулю, а весь чек делят друзья.
+
+Друзья бывают двух видов: с аккаунтом (ключ это email) и гости по имени (ключ «name:имя»).
 """
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
@@ -24,9 +27,11 @@ class SplitError(ValueError):
 @dataclass
 class SplitResult:
     total: int  # сумма всего чека
-    mine: int  # доля плательщика
-    friends: dict[str, int] = field(default_factory=dict)  # email -> доля друга
-    service: int = 0  # сколько из total составляет обслуживание (процент к чеку)
+    mine: int  # доля плательщика (0, если он сам не участвовал)
+    friends: dict[str, int] = field(default_factory=dict)  # ключ друга (email или "name:...") -> доля
+    service: int = 0  # сколько из total составляют чаевые и налог вместе
+    tip: int = 0  # сколько из total составляют чаевые
+    tax: int = 0  # сколько из total составляет налог
 
 
 def to_cents(value) -> int:
@@ -69,18 +74,20 @@ def distribute_proportionally(amount: int, weights: dict[str, int]) -> dict[str,
     return parts
 
 
-def _items_base(items: list[tuple[int, list[str]]], friends: list[str]) -> dict[str, int]:
-    """Сколько заказал каждый (без обслуживания). Блюдо на нескольких делится между ними поровну."""
+def _items_base(items: list[tuple[int, list[str]]], friends: list[str], participate: bool = True) -> dict[str, int]:
+    """Сколько заказал каждый (без чаевых и налога). Блюдо на нескольких делится между ними поровну."""
     if not items:
         raise SplitError("Add at least one item from the bill")
 
-    known = {ME, *friends}
-    base = {ME: 0, **{email: 0 for email in friends}}
+    known = {ME, *friends} if participate else set(friends)
+    base = {**({ME: 0} if participate else {}), **{email: 0 for email in friends}}
 
     for price, eaters in items:
         keys: list[str] = []
         for eater in eaters:
             eater = ME if eater.strip().lower() == ME else _norm(eater)
+            if eater == ME and not participate:
+                raise SplitError("You did not take part: remove “Me” from the items")
             if eater not in known:
                 raise SplitError(f"An item mentions someone who is not in the list: {eater}")
             if eater not in keys:
@@ -92,22 +99,20 @@ def _items_base(items: list[tuple[int, list[str]]], friends: list[str]) -> dict[
     return base
 
 
-def _add_service(base: dict[str, int], percent: float) -> dict[str, int]:
-    """Добавляет обслуживание (чаевые) в процентах. Делится пропорционально заказу каждого.
+def _percent_parts(base: dict[str, int], percent: float) -> dict[str, int]:
+    """Надбавка в процентах (чаевые или налог) к чеку. Делится пропорционально заказу каждого.
 
-    Если все суммы целые (без тиынов), обслуживание тоже округляется до целых.
+    Если все суммы целые (без тиынов), надбавка тоже округляется до целых.
     """
+    if not percent:
+        return {key: 0 for key in base}
     unit = 100 if all(value % 100 == 0 for value in base.values()) else 1
     subtotal = sum(base.values())
-    service = int(
-        (Decimal(subtotal) * Decimal(str(percent)) / 100 / unit).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-    )
-    totals = dict(base)
-    if service:
-        parts = distribute_proportionally(service, {key: value // unit for key, value in base.items()})
-        for key, part in parts.items():
-            totals[key] += part * unit
-    return totals
+    extra = int((Decimal(subtotal) * Decimal(str(percent)) / 100 / unit).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    if not extra:
+        return {key: 0 for key in base}
+    parts = distribute_proportionally(extra, {key: value // unit for key, value in base.items()})
+    return {key: part * unit for key, part in parts.items()}
 
 
 def compute_split(
@@ -115,14 +120,17 @@ def compute_split(
     amount: int | None,
     friends: list[tuple[str, int | None]],
     items: list[tuple[int, list[str]]] | None = None,
-    tip_percent: float = 0,  # обслуживание, % к чеку (во всех режимах)
+    tip_percent: float = 0,  # чаевые, % к чеку (во всех режимах)
     payer_email: str = "",
+    tax_percent: float = 0,  # налог, % к чеку (во всех режимах), считается отдельно от чаевых
+    participate: bool = True,  # False: вы платили только за других и сами не ели
 ) -> SplitResult:
     """Главная функция.
 
-    amount  - сумма чека без обслуживания, в копейках (для items не нужна, считается из позиций)
-    friends - список (email, сумма в копейках или None); сумма нужна только для custom
-    items   - для items: список (цена в копейках, [кто ел: "me" или email])
+    amount  - сумма чека без чаевых и налога, в копейках (для items не нужна, считается из позиций)
+    friends - список (ключ, сумма в копейках или None); ключ это email друга или "name:имя" для гостя;
+              сумма нужна только для custom
+    items   - для items: список (цена в копейках, [кто ел: "me" или ключ друга])
     """
     emails: list[str] = []
     custom_amounts: dict[str, int] = {}
@@ -140,12 +148,13 @@ def compute_split(
         raise SplitError("Add at least one friend")
 
     if mode == "items":
-        base = _items_base(items or [], emails)
+        base = _items_base(items or [], emails, participate)
     else:
         if amount is None or amount <= 0:
             raise SplitError("Enter the bill total")
         if mode == "equal":
-            base = split_evenly(amount, [ME, *emails])
+            keys = [ME, *emails] if participate else emails
+            base = split_evenly(amount, keys, lead=ME if participate else emails[0])
             if any(base[e] <= 0 for e in emails):
                 raise SplitError("The amount is too small to split between everyone")
         elif mode == "custom":
@@ -155,17 +164,25 @@ def compute_split(
             owed = sum(custom_amounts.values())
             if owed > amount:
                 raise SplitError("Friends’ shares add up to more than the bill")
-            base = {ME: amount - owed, **{e: custom_amounts[e] for e in emails}}
+            if not participate and owed != amount:
+                raise SplitError("You did not take part: friends’ shares must add up to the whole bill")
+            base = {**({ME: amount - owed} if participate else {}), **{e: custom_amounts[e] for e in emails}}
         else:
             raise SplitError("Unknown split method")
 
-    totals = _add_service(base, tip_percent)
+    tips = _percent_parts(base, tip_percent)
+    taxes = _percent_parts(base, tax_percent)
+    totals = {key: base[key] + tips[key] + taxes[key] for key in base}
     result = SplitResult(
         total=sum(totals.values()),
-        mine=totals[ME],
+        mine=totals.get(ME, 0),
         friends={e: totals[e] for e in emails if totals[e] > 0},
-        service=sum(totals.values()) - sum(base.values()),
+        service=sum(tips.values()) + sum(taxes.values()),
+        tip=sum(tips.values()),
+        tax=sum(taxes.values()),
     )
     if len(result.friends) == 0:
         raise SplitError("Nobody except you owes anything for this bill")
+    if not participate and result.mine != 0:  # на всякий случай: без вашего участия доля должна быть нулевой
+        raise SplitError("Internal split error")
     return result
