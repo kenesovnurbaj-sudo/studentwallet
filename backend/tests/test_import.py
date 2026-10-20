@@ -90,3 +90,32 @@ def test_manual_entry_is_flagged(client, auth_headers, monkeypatch):
     flagged = [r for r in rows if r["manual_match"]]
     assert len(flagged) == 1 and flagged[0]["note"] == "ИП DANTE"
     assert not flagged[0]["duplicate"]
+
+
+def test_person_transfers_go_to_transfers_category():
+    assert guess_category("Сара Т.", "Transfers", "expense") == "Переводы"
+    assert guess_category("Иван И.", "Replenishment", "income") == "Другое"
+    assert guess_category("Magnum Cash&Carry", "Purchases", "expense") == "Еда"
+
+
+def test_remembers_user_category_for_merchant(client, auth_headers, monkeypatch):
+    monkeypatch.setattr(imports, "extract_pdf_text", lambda data: SAMPLE)
+    cats = {c["name"]: c["id"] for c in client.get("/api/categories", headers=auth_headers).json()}
+
+    def preview():
+        return client.post("/api/import/kaspi", headers=auth_headers, files={"file": ("s.pdf", b"x")}).json()["rows"]
+
+    rows = preview()
+    dante = next(r for r in rows if r["note"] == "ИП DANTE")
+    assert dante["category_id"] == cats["Другое"]
+    assert next(r for r in rows if r["note"] == "Сара Т.")["category_id"] == cats["Переводы"]
+
+    # пользователь исправил категорию и импортировал
+    payload = {"rows": [{k: dante[k] for k in ("date", "amount", "type", "note")} | {"category_id": cats["Еда"]}]}
+    assert client.post("/api/import/commit", headers=auth_headers, json=payload).status_code == 200
+
+    # при следующей загрузке выбор подставляется сам, у другого пользователя он не появляется
+    assert next(r for r in preview() if r["note"] == "ИП DANTE")["category_id"] == cats["Еда"]
+    other = register_and_login(client, "other2@example.com")
+    r2 = client.post("/api/import/kaspi", headers=other, files={"file": ("s.pdf", b"x")}).json()["rows"]
+    assert next(r for r in r2 if r["note"] == "ИП DANTE")["category_id"] == cats["Другое"]

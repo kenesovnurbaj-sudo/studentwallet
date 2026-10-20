@@ -12,6 +12,7 @@ DEFAULT_CATEGORIES = [
     ("Учёба", "📚"),
     ("Развлечения", "🎬"),
     ("Подписки", "📱"),
+    ("Переводы", "💸"),
     ("Другое", "🧾"),
 ]
 
@@ -22,10 +23,12 @@ def seed(db: Session) -> None:
             db.add(Role(name=name))
     db.commit()
 
-    if db.query(Category).filter(Category.user_id.is_(None)).count() == 0:
-        for name, icon in DEFAULT_CATEGORIES:
+    # Добавляем только отсутствующие, чтобы новые категории появлялись и в уже работающей базе
+    existing = {c.name for c in db.query(Category).filter(Category.user_id.is_(None)).all()}
+    for name, icon in DEFAULT_CATEGORIES:
+        if name not in existing:
             db.add(Category(name=name, icon=icon, user_id=None))
-        db.commit()
+    db.commit()
 
     # Администратор создаётся только если заданы переменные окружения:
     # ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=ChangeMe123

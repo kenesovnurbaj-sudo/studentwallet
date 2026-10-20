@@ -1,7 +1,7 @@
 """Модели БД. Соответствуют ER-диаграмме из StudentWallet_project_plan.md (8 таблиц)."""
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -98,3 +98,15 @@ class ApiToken(Base):
     token_hash: Mapped[str] = mapped_column(String(255))
     label: Mapped[str] = mapped_column(String(60), default="Shortcuts")
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class MerchantRule(Base):
+    """Запомненная пользователем категория для получателя из выписки («ИП NANGO» -> Еда)."""
+
+    __tablename__ = "merchant_rules"
+    __table_args__ = (UniqueConstraint("user_id", "note", name="uq_merchant_rule"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    note: Mapped[str] = mapped_column(String(255))  # описание в нижнем регистре
+    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))

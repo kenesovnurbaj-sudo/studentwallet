@@ -41,7 +41,10 @@ class ParsedRow:
     own_account: bool  # перевод между своими счетами: по умолчанию не импортируем
 
 
-def guess_category(note: str) -> str:
+def guess_category(note: str, kind: str = "", type_: str = "expense") -> str:
+    """Категория по ключевым словам. Расходы-переводы людям идут в «Переводы» (получателей-людей по названию не отличить)."""
+    if kind == "Transfers" and type_ == "expense":
+        return "Переводы"
     text = note.lower()
     for category, words in CATEGORY_RULES:
         for word in words:

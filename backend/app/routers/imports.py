@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user
 from ..importer import FALLBACK_CATEGORY, extract_pdf_text, guess_category, parse_statement_text
-from ..models import Category, Expense, User
+from ..models import Category, Expense, MerchantRule, User
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 
@@ -67,8 +67,20 @@ def _manual_counts(db: Session, user: User) -> Counter:
     return Counter((e.spent_at, round(float(e.amount), 2), e.type) for e in manual)
 
 
+def _rule_key(note: str) -> str:
+    return note.strip().lower()[:255]
+
+
 def _visible_categories(db: Session, user: User) -> list[Category]:
     return db.query(Category).filter(or_(Category.user_id.is_(None), Category.user_id == user.id)).all()
+
+
+def _pick_category(r, remembered: dict, visible_ids: set, categories: dict, fallback_id: int) -> int:
+    """Приоритет: выбор пользователя из прошлых импортов, затем ключевые слова, затем «Другое»."""
+    saved = remembered.get(_rule_key(r.note))
+    if saved in visible_ids:
+        return saved
+    return categories.get(guess_category(r.note, r.kind, r.type), fallback_id)
 
 
 @router.post("/kaspi", response_model=PreviewOut)
@@ -93,6 +105,8 @@ async def preview_kaspi(
     categories = {c.name: c.id for c in _visible_categories(db, user) if c.user_id is None}
     fallback_id = categories.get(FALLBACK_CATEGORY) or next(iter(categories.values()))
 
+    remembered = {r.note: r.category_id for r in db.query(MerchantRule).filter(MerchantRule.user_id == user.id)}
+    visible_ids = {c.id for c in _visible_categories(db, user)}
     already = _imported_counts(db, user)
     manual = _manual_counts(db, user)
     seen: Counter = Counter()
@@ -113,13 +127,32 @@ async def preview_kaspi(
                 amount=r.amount,
                 type=r.type,
                 note=r.note,
-                category_id=categories.get(guess_category(r.note), fallback_id),
+                category_id=_pick_category(r, remembered, visible_ids, categories, fallback_id),
                 duplicate=is_dup,
                 own_account=r.own_account,
                 manual_match=manual_match,
             )
         )
     return PreviewOut(rows=out)
+
+
+def _remember_choices(db: Session, user: User, rows: list) -> None:
+    """Запоминает категорию для описания, если пользователь выбрал не ту, что подставили бы автоматически."""
+    globals_by_name = {c.name: c.id for c in _visible_categories(db, user) if c.user_id is None}
+    fallback_id = globals_by_name.get(FALLBACK_CATEGORY)
+    saved = {r.note: r for r in db.query(MerchantRule).filter(MerchantRule.user_id == user.id)}
+    for row in rows:
+        key = _rule_key(row.note)
+        if not key or row.type != "expense":
+            continue
+        auto_id = globals_by_name.get(guess_category(row.note), fallback_id)
+        rule = saved.get(key)
+        if rule is not None:
+            rule.category_id = row.category_id
+        elif row.category_id != auto_id and row.category_id != globals_by_name.get("Переводы"):
+            rule = MerchantRule(user_id=user.id, note=key, category_id=row.category_id)
+            db.add(rule)
+            saved[key] = rule
 
 
 @router.post("/commit", response_model=CommitOut)
@@ -132,6 +165,8 @@ def commit(
     allowed = {c.id for c in _visible_categories(db, user)}
     if any(r.category_id not in allowed for r in data.rows):
         raise HTTPException(status_code=400, detail="Unknown category")
+
+    _remember_choices(db, user, data.rows)
 
     already = _imported_counts(db, user)
     seen: Counter = Counter()
