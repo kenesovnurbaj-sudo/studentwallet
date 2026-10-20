@@ -2,26 +2,15 @@ from datetime import date
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..deps import get_current_user
-from ..models import Category, Expense, User
-from .imports import remember_choices
+from ..deps import get_current_user, visible_category
+from ..models import Expense, User
 from ..schemas import BulkCategoryChange, BulkCategoryResult, ExpenseCreate, ExpenseOut, ExpenseUpdate
+from .imports import remember_choices
 
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
-
-
-def _check_category(db: Session, user: User, category_id: int) -> None:
-    exists = (
-        db.query(Category)
-        .filter(Category.id == category_id, or_(Category.user_id.is_(None), Category.user_id == user.id))
-        .first()
-    )
-    if exists is None:
-        raise HTTPException(status_code=400, detail="Unknown category")
 
 
 def _get_own_expense(db: Session, user: User, expense_id: int) -> Expense:
@@ -57,7 +46,7 @@ def create_expense(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _check_category(db, user, data.category_id)
+    visible_category(db, user, data.category_id)
     expense = Expense(user_id=user.id, **data.model_dump())
     db.add(expense)
     db.commit()
@@ -72,7 +61,7 @@ def bulk_change_category(
     db: Session = Depends(get_db),
 ):
     """Меняет категорию сразу у нескольких своих записей. Выбор запоминается для будущих импортов выписки."""
-    _check_category(db, user, data.category_id)
+    visible_category(db, user, data.category_id)
     ids = set(data.ids)
     items = db.query(Expense).filter(Expense.id.in_(ids)).all()
     if len(items) != len(ids):
@@ -98,7 +87,7 @@ def update_expense(
     expense = _get_own_expense(db, user, expense_id)
     changes = data.model_dump(exclude_unset=True)
     if "category_id" in changes and changes["category_id"] is not None:
-        _check_category(db, user, changes["category_id"])
+        visible_category(db, user, changes["category_id"])
     for field, value in changes.items():
         if value is not None:
             setattr(expense, field, value)

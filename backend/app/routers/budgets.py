@@ -6,18 +6,23 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..deps import get_current_user
+from ..clock import current_month, today
+from ..deps import get_current_user, visible_category
 from ..forecast import build_forecast
 from ..models import Budget, Category, Expense, User
-from ..schemas import BudgetOut, CategoryBalance, ForecastOut, BudgetSet, BudgetSplitSaved, BudgetSplitSet, BudgetSummary
+from ..schemas import (
+    BudgetOut,
+    BudgetSet,
+    BudgetSplitSaved,
+    BudgetSplitSet,
+    BudgetSummary,
+    CategoryBalance,
+    ForecastOut,
+)
 
 router = APIRouter(prefix="/api", tags=["budgets"])
 
 MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
-
-
-def _current_month() -> str:
-    return date.today().strftime("%Y-%m")
 
 
 def _month_bounds(month: str) -> tuple[date, date]:
@@ -28,7 +33,7 @@ def _month_bounds(month: str) -> tuple[date, date]:
 
 @router.get("/budgets", response_model=list[BudgetOut])
 def list_budgets(
-    month: str = Query(default_factory=_current_month, pattern=MONTH_PATTERN),
+    month: str = Query(default_factory=current_month, pattern=MONTH_PATTERN),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -42,6 +47,9 @@ def set_budget(
     db: Session = Depends(get_db),
 ):
     """Создаёт или обновляет лимит на месяц (общий или по категории)."""
+    if data.category_id is not None:
+        # Раньше лимит можно было поставить на несуществующую или чужую категорию.
+        visible_category(db, user, data.category_id)
     budget = (
         db.query(Budget)
         .filter(
@@ -92,7 +100,7 @@ def save_budget_split(
 
 @router.get("/budget/summary", response_model=BudgetSummary)
 def budget_summary(
-    month: str = Query(default_factory=_current_month, pattern=MONTH_PATTERN),
+    month: str = Query(default_factory=current_month, pattern=MONTH_PATTERN),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -120,13 +128,13 @@ def budget_summary(
     spent = float(spent)
     remaining = limit - spent
 
-    today = date.today()
-    if today < first_day:
+    today_ = today()
+    if today_ < first_day:
         days_left = (last_day - first_day).days + 1
-    elif today > last_day:
+    elif today_ > last_day:
         days_left = 0
     else:
-        days_left = (last_day - today).days + 1
+        days_left = (last_day - today_).days + 1
     daily_limit = remaining / days_left if days_left > 0 and remaining > 0 else 0.0
 
     return BudgetSummary(
@@ -134,7 +142,8 @@ def budget_summary(
         limit=round(limit, 2),
         spent=round(spent, 2),
         remaining=round(remaining, 2),
-        percent_used=round(spent / limit * 100, 1),
+        # limit > 0 гарантирует схема, но в старой базе мог остаться лимит 0 (баг с 0.001)
+        percent_used=round(spent / limit * 100, 1) if limit > 0 else 0.0,
         days_left=days_left,
         daily_limit=round(daily_limit, 2),
     )
@@ -142,18 +151,18 @@ def budget_summary(
 
 @router.get("/budget/forecast", response_model=ForecastOut)
 def budget_forecast(
-    month: str = Query(default_factory=_current_month, pattern=MONTH_PATTERN),
+    month: str = Query(default_factory=current_month, pattern=MONTH_PATTERN),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Прогноз расходов до конца месяца и предупреждения о слишком быстрых тратах."""
     summary = budget_summary(month=month, user=user, db=db)  # 404, если бюджет на месяц не задан
-    return build_forecast(month, summary.limit, summary.spent, date.today())
+    return build_forecast(month, summary.limit, summary.spent, today())
 
 
 @router.get("/budget/categories", response_model=list[CategoryBalance])
 def category_balances(
-    month: str = Query(default_factory=_current_month, pattern=MONTH_PATTERN),
+    month: str = Query(default_factory=current_month, pattern=MONTH_PATTERN),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

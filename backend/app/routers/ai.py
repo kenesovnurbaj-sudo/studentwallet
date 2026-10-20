@@ -16,7 +16,8 @@ from ..expense_parser import parse_expense_text
 from ..importer import FALLBACK_CATEGORY, guess_category
 from ..budget_split import amounts_from_percents, baseline_percents, validate_ai_percents
 from ..models import Budget, Category, Expense, User
-from .budgets import MONTH_PATTERN, _current_month
+from ..clock import current_month
+from .budgets import MONTH_PATTERN
 from . import assistant
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -160,7 +161,7 @@ def _previous_months(month: str, count: int) -> tuple[date, date]:
 
 @router.get("/budget-split", response_model=SplitSuggestion)
 def suggest_budget_split(
-    month: str = Query(default_factory=_current_month, pattern=MONTH_PATTERN),
+    month: str = Query(default_factory=current_month, pattern=MONTH_PATTERN),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

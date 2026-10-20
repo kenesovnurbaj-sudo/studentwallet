@@ -1,5 +1,5 @@
-from datetime import date
-
+from app.clock import today as clock_today
+from app.clock import current_month
 from tests.conftest import register_and_login
 
 
@@ -104,7 +104,7 @@ def test_personal_category_visible_only_to_owner(client, auth_headers):
 
 def test_budget_summary(client, auth_headers):
     cat = first_category_id(client, auth_headers)
-    month = date.today().strftime("%Y-%m")
+    month = current_month()
 
     assert client.get("/api/budget/summary", headers=auth_headers).status_code == 404
 
@@ -126,7 +126,7 @@ def test_budget_summary(client, auth_headers):
 
 
 def test_budget_update_does_not_duplicate(client, auth_headers):
-    month = date.today().strftime("%Y-%m")
+    month = current_month()
     client.put("/api/budgets", headers=auth_headers, json={"month": month, "limit_amount": 5000})
     client.put("/api/budgets", headers=auth_headers, json={"month": month, "limit_amount": 7000})
     budgets = client.get(f"/api/budgets?month={month}", headers=auth_headers).json()
@@ -165,7 +165,7 @@ def test_assistant_reply_gets_user_context(client, auth_headers, monkeypatch):
 
     cat = first_category_id(client, auth_headers)
     client.post("/api/expenses", headers=auth_headers, json={"amount": 1500, "category_id": cat, "note": "обед"})
-    client.put("/api/budgets", headers=auth_headers, json={"month": date.today().strftime("%Y-%m"), "limit_amount": 60000})
+    client.put("/api/budgets", headers=auth_headers, json={"month": clock_today().strftime("%Y-%m"), "limit_amount": 60000})
 
     sent = {}
 
@@ -226,7 +226,7 @@ def test_bulk_change_category_rejects_foreign_and_unknown(client, auth_headers):
 
 
 def test_category_balances(client, auth_headers):
-    month = date.today().strftime("%Y-%m")
+    month = clock_today().strftime("%Y-%m")
     cats = {c["name"]: c["id"] for c in client.get("/api/categories", headers=auth_headers).json()}
     client.put(
         "/api/budgets/split",

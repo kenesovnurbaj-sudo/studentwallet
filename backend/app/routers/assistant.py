@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from ..clock import today as clock_today
 from ..database import get_db
 from ..deps import get_current_user
 from ..models import Category, Expense, User
@@ -55,7 +56,7 @@ class ChatReply(BaseModel):
 
 def build_context(db: Session, user: User) -> str:
     """Короткая сводка по бюджету и тратам. Email и пароль в неё не попадают."""
-    today = date.today()
+    today = clock_today()
     month = today.strftime("%Y-%m")
     first_day, last_day = _month_bounds(month)
     lines = [f"Today is {today.isoformat()}. Name: {user.full_name or 'student'}. Currency: {user.currency}."]

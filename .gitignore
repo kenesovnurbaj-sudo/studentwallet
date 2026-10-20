@@ -8,3 +8,6 @@ venv/
 node_modules/
 dist/
 .DS_Store
+
+# локальный ключ подписи JWT (генерируется автоматически, если SECRET_KEY не задан)
+.secret_key

@@ -39,7 +39,8 @@ uvicorn app.main:app --reload
 | Переменная | Назначение |
 |---|---|
 | `DATABASE_URL` | Адрес БД. По умолчанию SQLite. Для PostgreSQL: `postgresql+psycopg2://user:pass@localhost:5432/studentwallet` (потребуется `pip install psycopg2-binary`) |
-| `SECRET_KEY` | Ключ подписи JWT. На сервере обязательно задайте свой |
+| `SECRET_KEY` | Ключ подписи JWT. Если не задан, при первом запуске генерируется случайный и сохраняется в `backend/.secret_key` (файл в .gitignore). На сервере задайте свой: `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
+| `APP_UTC_OFFSET` | Часовой пояс для «сегодня» (проверка дат трат, текущий месяц). По умолчанию `5` (Казахстан) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Если заданы, при запуске создаётся администратор |
 
 Пример создания администратора:

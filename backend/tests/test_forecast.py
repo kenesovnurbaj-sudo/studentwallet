@@ -1,5 +1,7 @@
 from datetime import date
 
+from app.clock import today as clock_today
+
 from app.forecast import build_forecast
 
 MONTH = "2026-10"  # 31 день
@@ -58,7 +60,7 @@ def test_safe_daily_limit_uses_remaining_days():
 
 
 def test_endpoint(client, auth_headers):
-    month = date.today().strftime("%Y-%m")
+    month = clock_today().strftime("%Y-%m")
     assert client.get("/api/budget/forecast", headers=auth_headers).status_code == 404
     client.put("/api/budgets", headers=auth_headers, json={"month": month, "limit_amount": 60000})
     r = client.get("/api/budget/forecast", headers=auth_headers)

@@ -1,10 +1,12 @@
 from datetime import date
 
+from app.clock import today as clock_today
+
 from app.budget_split import amounts_from_percents, baseline_percents, validate_ai_percents
 from app.routers import ai
 
 NAMES = ["Food", "Housing", "Transport", "Education", "Entertainment", "Subscriptions", "Savings", "Other"]
-MONTH = date.today().strftime("%Y-%m")
+MONTH = clock_today().strftime("%Y-%m")
 
 
 def test_baseline_sums_to_100_and_skips_unknown_categories():
@@ -76,7 +78,7 @@ def test_split_ignores_bad_ai_answer(client, auth_headers, monkeypatch):
 def test_split_uses_history(client, auth_headers, monkeypatch):
     monkeypatch.setattr(ai, "ask_ai_for_split", lambda *a: (None, None))
     cats = {c["name"]: c["id"] for c in client.get("/api/categories", headers=auth_headers).json()}
-    today = date.today()
+    today = clock_today()
     prev = date(today.year - 1, 12, 15) if today.month == 1 else date(today.year, today.month - 1, 15)
     client.post("/api/expenses", headers=auth_headers, json={"amount": 90000, "category_id": cats["Entertainment"], "spent_at": prev.isoformat()})
     set_budget(client, auth_headers)

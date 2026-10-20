@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+from .clock import today as clock_today
+
 CURRENCY = r"(?:₸|тг|тенге|tenge|kzt|tg)"
 SPAN_RE = re.compile(r"\d[\d  .,]*\d(?:\s?[kк](?![a-zа-я]))?|\d(?:\s?[kк](?![a-zа-я]))?", re.IGNORECASE)
 DATE_RE = re.compile(r"(?<!\d)(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?(?!\d)")
@@ -41,7 +43,7 @@ def _to_number(span: str) -> float | None:
 
 
 def parse_expense_text(text: str, today: date | None = None) -> ParsedText | None:
-    today = today or date.today()
+    today = today or clock_today()
     original = " ".join(text.split())
     work = original.lower()
 
