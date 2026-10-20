@@ -119,3 +119,15 @@ def test_remembers_user_category_for_merchant(client, auth_headers, monkeypatch)
     other = register_and_login(client, "other2@example.com")
     r2 = client.post("/api/import/kaspi", headers=other, files={"file": ("s.pdf", b"x")}).json()["rows"]
     assert next(r for r in r2 if r["note"] == "ИП DANTE")["category_id"] == cats["Другое"]
+
+
+def test_person_detected_by_name_and_initial():
+    from app.importer import is_person
+
+    for note in ("Сара Т.", "Ақерке Ж.", "Мəдина Д.", "Mubariz S.", "Гулжан Р., Bank CenterCredit"):
+        assert is_person(note), note
+    for note in ("ИП DANTE", "MIRAS STORE", "Magnum Cash&Carry", "iU Market Байзакова", "ТОО Tumar-life clinic", "Pay for Kaspi Credit"):
+        assert not is_person(note), note
+    # пополнение от человека тоже «Переводы», даже если банк назвал его не переводом
+    assert guess_category("Айдар С.", "Replenishment", "income") == "Переводы"
+    assert guess_category("Айдар С.", "Purchases", "expense") == "Переводы"

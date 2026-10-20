@@ -41,9 +41,18 @@ class ParsedRow:
     own_account: bool  # перевод между своими счетами: по умолчанию не импортируем
 
 
+# Человек в выписке записан как «Имя И.» (иногда дальше идёт «, название банка»)
+PERSON_RE = re.compile(r"^(?P<name>[^\W\d_][\w'’ʼ-]*) (?P<initial>[^\W\d_])\.(?:[,\s]|$)")
+
+
+def is_person(note: str) -> bool:
+    m = PERSON_RE.match(note.strip())
+    return bool(m) and m["name"][0].isupper() and m["initial"].isupper()
+
+
 def guess_category(note: str, kind: str = "", type_: str = "expense") -> str:
-    """Категория по ключевым словам. Расходы-переводы людям идут в «Переводы» (получателей-людей по названию не отличить)."""
-    if kind == "Transfers" and type_ == "expense":
+    """Категория по ключевым словам. Переводы людям и пополнения от людей идут в «Переводы»."""
+    if is_person(note) or (kind == "Transfers" and type_ == "expense"):
         return "Переводы"
     text = note.lower()
     for category, words in CATEGORY_RULES:
