@@ -11,6 +11,8 @@ import ForecastCard from './ForecastCard.jsx'
 import CategoryBalances from './CategoryBalances.jsx'
 import Assistant from './Assistant.jsx'
 import Debts from './Debts.jsx'
+import SpendingChart from './SpendingChart.jsx'
+import CategoryBudgets from './CategoryBudgets.jsx'
 
 export default function Dashboard({ user, onLogout }) {
   const month = monthISO()
@@ -125,6 +127,18 @@ export default function Dashboard({ user, onLogout }) {
           onSaved={saved}
           onCancelEdit={() => setEditing(null)}
           onCategoryCreated={loadCategories}
+        />
+        <CategoryBudgets
+          categories={categories}
+          expenses={expenses}
+          month={month}
+          refreshKey={tick}
+          onSaved={() => setTick((previous) => previous + 1)}
+        />
+        <SpendingChart
+          expenses={expenses}
+          categories={categories}
+          month={month}
         />
         <Analytics expenses={expenses} categories={categories} month={month} />
         <ExpenseList

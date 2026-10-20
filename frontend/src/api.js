@@ -75,6 +75,8 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 }
 
 export const api = {
+  budgets: (month) =>
+    request(`/budgets?month=${encodeURIComponent(month)}`),
   register: (data) => request('/auth/register', { method: 'POST', body: data, auth: false }),
   login: (data) => request('/auth/login', { method: 'POST', body: data, auth: false }),
   me: () => request('/auth/me'),
