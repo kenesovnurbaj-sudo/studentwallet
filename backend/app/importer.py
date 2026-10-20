@@ -21,12 +21,18 @@ ROW_RE = re.compile(
 
 # (категория, ключевые слова). Ищем по целым словам без учёта регистра, побеждает первое совпадение.
 CATEGORY_RULES = [
-    ("Entertainment", ["pixel cyberlounge", "kinoforum", "кино", "cinema"]),
-    ("Transport", ["yandex.go", "yandex go", "onay", "taxi", "такси", "indriver"]),
-    ("Subscriptions", ["yandex.plus", "digitalocean", "netflix", "spotify", "beeline", "kcell", "tele2", "altel"]),
+    ("Entertainment", ["pixel cyberlounge", "kinoforum", "кино", "cinema", "movie", "movies", "game", "games", "club",
+                       "concert", "party", "игра", "клуб", "концерт"]),
+    ("Transport", ["yandex.go", "yandex go", "onay", "taxi", "такси", "indriver", "uber", "bolt", "bus", "metro",
+                   "fuel", "petrol", "gas", "автобус", "метро", "бензин"]),
+    ("Subscriptions", ["yandex.plus", "digitalocean", "netflix", "spotify", "youtube", "subscription", "beeline", "kcell",
+                       "tele2", "altel", "подписка"]),
     ("Food", ["magnum", "cu", "iu market", "supersushi", "cafe", "mangal", "донер", "хинкали", "гастромир", "бравый",
-             "zero arbat", "small", "kfc", "burger", "pizza", "sushi", "coffee", "кофе", "market", "маркет"]),
-    ("Education", ["university", "университет", "колледж", "книг", "kitap"]),
+              "zero arbat", "small", "kfc", "burger", "pizza", "sushi", "coffee", "кофе", "market", "маркет",
+              "lunch", "dinner", "breakfast", "canteen", "restaurant", "groceries", "grocery", "snack", "snacks",
+              "обед", "ужин", "завтрак", "столовая", "еда", "продукты"]),
+    ("Education", ["university", "университет", "колледж", "книг", "kitap", "book", "books", "textbook", "course",
+                   "tuition", "exam", "учебник", "курс"]),
 ]
 FALLBACK_CATEGORY = "Other"
 

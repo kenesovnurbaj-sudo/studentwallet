@@ -26,6 +26,7 @@ const KNOWN_ERRORS = {
   'Not authenticated': 'Please log in',
   'Invalid or expired token': 'Your session has expired. Please log in again',
   'Could not read statement': 'Could not read the statement. A Kaspi Gold PDF in English is required',
+  'Could not find an amount': 'Could not find an amount. Include a number, for example “lunch 2500”',
   'File too large': 'File is too large (5 MB max)',
   'AI unavailable': 'WALL·E is unavailable right now. Please try again later',
 }
@@ -84,6 +85,7 @@ export const api = {
     request('/expenses/bulk-category', { method: 'POST', body: { ids, category_id: categoryId } }),
   deleteExpense: (id) => request(`/expenses/${id}`, { method: 'DELETE' }),
   setBudget: (data) => request('/budgets', { method: 'PUT', body: data }),
+  parseExpense: (text) => request('/ai/parse-expense', { method: 'POST', body: { text } }),
   importKaspi: (file) => {
     const form = new FormData()
     form.append('file', file)

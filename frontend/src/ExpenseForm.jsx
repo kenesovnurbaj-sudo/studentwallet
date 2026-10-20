@@ -10,11 +10,37 @@ export default function ExpenseForm({ categories, onAdded }) {
   const [date, setDate] = useState(todayISO())
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [quick, setQuick] = useState('')
+  const [quickBusy, setQuickBusy] = useState(false)
+  const [quickHint, setQuickHint] = useState('')
 
   // Когда категории загрузились, выбираем первую по умолчанию
   useEffect(() => {
     if (!categoryId && categories.length) setCategoryId(String(categories[0].id))
   }, [categories, categoryId])
+
+  // «lunch at canteen 2500» -> подставляем сумму, категорию, дату и описание в форму; сохраняет пользователь сам
+  async function quickFill(e) {
+    e.preventDefault()
+    if (!quick.trim()) return
+    setError('')
+    setQuickHint('')
+    setQuickBusy(true)
+    try {
+      const r = await api.parseExpense(quick.trim())
+      setType(r.type)
+      setAmount(String(r.amount))
+      setCategoryId(String(r.category_id))
+      setNote(r.note)
+      setDate(r.spent_at)
+      setQuickHint(`Filled in: ${r.category}${r.source === 'ai' ? ' (picked by AI)' : ''}. Check the details and press Add.`)
+      setQuick('')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setQuickBusy(false)
+    }
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -47,6 +73,23 @@ export default function ExpenseForm({ categories, onAdded }) {
   return (
     <section className="block">
       <h2>New entry</h2>
+      <form className="quick" onSubmit={quickFill}>
+        <label className="sr-only" htmlFor="quick-add">
+          Describe the entry in your own words
+        </label>
+        <input
+          id="quick-add"
+          value={quick}
+          onChange={(e) => setQuick(e.target.value)}
+          maxLength={300}
+          placeholder="Type it like “lunch at canteen 2500”"
+          autoComplete="off"
+        />
+        <button className="secondary" type="submit" disabled={quickBusy || !quick.trim()}>
+          {quickBusy ? 'Reading…' : 'Fill in'}
+        </button>
+      </form>
+      {quickHint && <p className="ok-note">{quickHint}</p>}
       <form className="expense-form" onSubmit={submit}>
         <div className="segmented" role="group" aria-label="Entry type">
           <button

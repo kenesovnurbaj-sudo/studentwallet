@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, SessionLocal, engine
-from .routers import admin, assistant, auth, budgets, categories, expenses, imports
+from .routers import admin, ai, assistant, auth, budgets, categories, expenses, imports
 from .migrations import move_people_to_transfers, rename_default_categories_to_english
 from .seed import seed
 
@@ -38,6 +38,7 @@ app.include_router(expenses.router)
 app.include_router(budgets.router)
 app.include_router(admin.router)
 app.include_router(assistant.router)
+app.include_router(ai.router)
 app.include_router(imports.router)
 
 
