@@ -1471,7 +1471,7 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* Деление счёта: кнопка в форме, чаевые и налог, действия в истории и долгах */
+/* Деление счёта: кнопка в форме, чаевые, действия в истории и долгах */
 .split-toggle {
   display: flex;
   align-items: center;
@@ -1484,12 +1484,6 @@ button:disabled {
   border-color: var(--accent);
   background: #eef1ff;
   color: var(--accent);
-}
-
-.extras {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 16px;
 }
 
 .took-part {

@@ -138,7 +138,6 @@ class SplitIn(BaseModel):
     participants: list[SplitParticipant] = Field(min_length=1, max_length=20)  # только друзья
     items: list[SplitItem] = Field(default_factory=list, max_length=50)
     tip_percent: float = Field(default=0, ge=0, le=100)  # чаевые, % к чеку
-    tax_percent: float = Field(default=0, ge=0, le=100)  # налог, % к чеку
     i_participate: bool = True  # False: вы платили только за других и сами не ели
 
 
@@ -189,9 +188,7 @@ class SplitLine(BaseModel):
 
 class SplitPreviewOut(BaseModel):
     total: float
-    service: float = 0  # сколько из total составляют чаевые и налог вместе
-    tip: float = 0
-    tax: float = 0
+    service: float = 0  # сколько из total составляют чаевые
     my_share: float
     lines: list[SplitLine]
 

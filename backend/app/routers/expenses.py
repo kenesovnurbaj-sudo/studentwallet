@@ -45,7 +45,6 @@ def _compute(user: User, amount: float | None, split: SplitIn) -> SplitResult:
             items,
             split.tip_percent,
             payer_email=user.email,
-            tax_percent=split.tax_percent,
             participate=split.i_participate,
         )
     except SplitError as exc:
@@ -84,8 +83,6 @@ def split_preview(
     return SplitPreviewOut(
         total=from_cents(result.total),
         service=from_cents(result.service),
-        tip=from_cents(result.tip),
-        tax=from_cents(result.tax),
         my_share=from_cents(result.mine),
         lines=lines,
     )

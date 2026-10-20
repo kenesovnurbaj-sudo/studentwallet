@@ -1,4 +1,4 @@
-"""Деление счёта: друзья без аккаунта, чаевые и налог, «я не участвовал», деление из истории, напоминания."""
+"""Деление счёта: друзья без аккаунта, чаевые, «я не участвовал», деление из истории, напоминания."""
 from datetime import datetime, timedelta
 
 from app.models import ExpenseShare
@@ -21,10 +21,10 @@ def split(mode="equal", participants=None, **extra):
 
 # ---------- расчёты ----------
 
-def test_tip_and_tax_are_separate_and_proportional():
-    r = compute_split("equal", 1_000_00, [("a@x.kz", None)], tip_percent=10, tax_percent=12, payer_email="me@x.kz")
-    assert r.tip == 100_00 and r.tax == 120_00 and r.service == 220_00
-    assert r.total == 1_220_00 and r.mine == 610_00 and r.friends == {"a@x.kz": 610_00}
+def test_tip_is_split_proportionally():
+    r = compute_split("equal", 1_000_00, [("a@x.kz", None)], tip_percent=10, payer_email="me@x.kz")
+    assert r.service == 100_00
+    assert r.total == 1_100_00 and r.mine == 550_00 and r.friends == {"a@x.kz": 550_00}
 
 
 def test_payer_not_taking_part_equal():
@@ -95,17 +95,17 @@ def test_guest_debt_is_closed_by_payer_and_cannot_be_reminded_in_app(client):
     assert client.get("/api/debts/owed-to-me", headers=a).json() == []
 
 
-# ---------- налог, чаевые, «я не участвовал» через API ----------
+# ---------- чаевые и «я не участвовал» через API ----------
 
-def test_tip_tax_and_not_participating_via_api(client):
+def test_tip_and_not_participating_via_api(client):
     a = register_and_login(client, A)
     body = {"amount": 10000, "category_id": cat_id(client, a), "note": "birthday",
-            "split": split(participants=[{"name": "Aida"}, {"name": "Miras"}], tip_percent=10, tax_percent=12, i_participate=False)}
+            "split": split(participants=[{"name": "Aida"}, {"name": "Miras"}], tip_percent=10, i_participate=False)}
     preview = client.post("/api/expenses/split-preview", headers=a, json={"amount": 10000, "split": body["split"]}).json()
-    assert (preview["tip"], preview["tax"], preview["service"], preview["total"], preview["my_share"]) == (1000, 1200, 2200, 12200, 0)
+    assert (preview["service"], preview["total"], preview["my_share"]) == (1000, 11000, 0)
     e = client.post("/api/expenses", headers=a, json=body).json()
-    assert e["amount"] == 0 and e["paid_total"] == 12200
-    assert sorted(d["amount"] for d in client.get("/api/debts/owed-to-me", headers=a).json()) == [6100, 6100]
+    assert e["amount"] == 0 and e["paid_total"] == 11000
+    assert sorted(d["amount"] for d in client.get("/api/debts/owed-to-me", headers=a).json()) == [5500, 5500]
     # в бюджет ничего не попадает
     month = e["spent_at"][:7]
     client.put("/api/budgets", headers=a, json={"month": month, "limit_amount": 50000})
@@ -254,12 +254,11 @@ def test_items_mode_with_guest_and_not_participating_via_api(client):
             "participants": [{"email": B}, {"name": "Aida"}],
             "items": [{"name": "Pizza", "price": 5000, "eaters": [B, "name:aida"]}, {"name": "Cola", "price": 1000, "eaters": [B]}],
             "tip_percent": 10,
-            "tax_percent": 12,
             "i_participate": False,
         },
     }
     r = client.post("/api/expenses", headers=a, json=body)
     assert r.status_code == 201, r.text
-    assert (r.json()["amount"], r.json()["paid_total"]) == (0, 7320)  # 6000 + 10% + 12%
+    assert (r.json()["amount"], r.json()["paid_total"]) == (0, 6600)  # 6000 + 10% чаевых
     debts = {d["debtor_name"]: d["amount"] for d in client.get("/api/debts/owed-to-me", headers=a).json()}
-    assert sum(debts.values()) == 7320 and debts["Aida"] == 3050  # 2500 * 1.22
+    assert sum(debts.values()) == 6600 and debts["Aida"] == 2750  # 2500 * 1.1

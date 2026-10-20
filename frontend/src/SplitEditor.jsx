@@ -4,7 +4,7 @@ import { money } from './format.js'
 
 // Состояние деления счёта живёт в ExpenseForm, а здесь только его редактор и предпросмотр.
 
-export const emptySplit = () => ({ on: false, mode: 'equal', friends: [], items: [], tip: '', tax: '', me: true })
+export const emptySplit = () => ({ on: false, mode: 'equal', friends: [], items: [], tip: '', me: true })
 
 const MODES = [
   ['equal', 'Equally'],
@@ -52,7 +52,6 @@ function splitPayload(split) {
           .map((i) => ({ name: i.name.trim(), price: Number(i.price), eaters: i.eaters }))
       : [],
     tip_percent: Number(split.tip) || 0,
-    tax_percent: Number(split.tax) || 0,
     i_participate: split.me,
   }
 }
@@ -318,35 +317,22 @@ export default function SplitEditor({ split, amount, onChange }) {
         </div>
       )}
 
-      <div className="extras">
-        <label className="service">
-          Tip, %
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            max="100"
-            step="any"
-            value={split.tip}
-            onChange={(e) => update({ tip: e.target.value })}
-            placeholder="For example, 10"
-          />
-        </label>
-        <label className="service">
-          Tax, %
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            max="100"
-            step="any"
-            value={split.tax}
-            onChange={(e) => update({ tax: e.target.value })}
-            placeholder="For example, 12"
-          />
-        </label>
-      </div>
-      <p className="muted small">Tip and tax are added on top of the bill, each separately, and split in proportion to what each person ordered.</p>
+      <label className="service">
+        Tip, %
+        <input
+          type="number"
+          inputMode="decimal"
+          min="0"
+          max="100"
+          step="any"
+          value={split.tip}
+          onChange={(e) => update({ tip: e.target.value })}
+          placeholder="For example, 10"
+        />
+        <span className="muted small">
+          The percentage is added to the bill and split in proportion to what each person ordered.
+        </span>
+      </label>
 
       <div className="split-preview" aria-live="polite">
         {previewError && <p className="error">{previewError}</p>}
@@ -356,13 +342,8 @@ export default function SplitEditor({ split, amount, onChange }) {
             <p className="split-total">
               Whole bill <b>{money(preview.total)}</b>, your share <b>{money(preview.my_share)}</b>
             </p>
-            {(preview.tip > 0 || preview.tax > 0) && (
-              <p className="muted small split-service">
-                The bill includes
-                {preview.tip > 0 && ` tip ${money(preview.tip)}`}
-                {preview.tip > 0 && preview.tax > 0 && ' and'}
-                {preview.tax > 0 && ` tax ${money(preview.tax)}`}
-              </p>
+            {preview.service > 0 && (
+              <p className="muted small split-service">The bill includes a tip: {money(preview.service)}</p>
             )}
             <ul className="split-lines">
               {preview.lines.map((line) => (

@@ -8,7 +8,7 @@
   custom - вы вводите сумму каждого друга, остаток остаётся вам
   items  - по блюдам: у каждой позиции отмечено, кто её ел
 
-Во всех режимах можно добавить чаевые и налог (в процентах, каждый отдельно): они ложатся сверху чека
+Во всех режимах можно добавить чаевые (в процентах): они ложатся сверху чека
 и делятся пропорционально тому, сколько заказал каждый. Если вы платили только за других и сами не ели
 (participate=False), ваша доля равна нулю, а весь чек делят друзья.
 
@@ -29,9 +29,7 @@ class SplitResult:
     total: int  # сумма всего чека
     mine: int  # доля плательщика (0, если он сам не участвовал)
     friends: dict[str, int] = field(default_factory=dict)  # ключ друга (email или "name:...") -> доля
-    service: int = 0  # сколько из total составляют чаевые и налог вместе
-    tip: int = 0  # сколько из total составляют чаевые
-    tax: int = 0  # сколько из total составляет налог
+    service: int = 0  # сколько из total составляют чаевые
 
 
 def to_cents(value) -> int:
@@ -75,7 +73,7 @@ def distribute_proportionally(amount: int, weights: dict[str, int]) -> dict[str,
 
 
 def _items_base(items: list[tuple[int, list[str]]], friends: list[str], participate: bool = True) -> dict[str, int]:
-    """Сколько заказал каждый (без чаевых и налога). Блюдо на нескольких делится между ними поровну."""
+    """Сколько заказал каждый (без чаевых). Блюдо на нескольких делится между ними поровну."""
     if not items:
         raise SplitError("Add at least one item from the bill")
 
@@ -100,7 +98,7 @@ def _items_base(items: list[tuple[int, list[str]]], friends: list[str], particip
 
 
 def _percent_parts(base: dict[str, int], percent: float) -> dict[str, int]:
-    """Надбавка в процентах (чаевые или налог) к чеку. Делится пропорционально заказу каждого.
+    """Надбавка в процентах (чаевые) к чеку. Делится пропорционально заказу каждого.
 
     Если все суммы целые (без тиынов), надбавка тоже округляется до целых.
     """
@@ -122,12 +120,11 @@ def compute_split(
     items: list[tuple[int, list[str]]] | None = None,
     tip_percent: float = 0,  # чаевые, % к чеку (во всех режимах)
     payer_email: str = "",
-    tax_percent: float = 0,  # налог, % к чеку (во всех режимах), считается отдельно от чаевых
     participate: bool = True,  # False: вы платили только за других и сами не ели
 ) -> SplitResult:
     """Главная функция.
 
-    amount  - сумма чека без чаевых и налога, в копейках (для items не нужна, считается из позиций)
+    amount  - сумма чека без чаевых, в копейках (для items не нужна, считается из позиций)
     friends - список (ключ, сумма в копейках или None); ключ это email друга или "name:имя" для гостя;
               сумма нужна только для custom
     items   - для items: список (цена в копейках, [кто ел: "me" или ключ друга])
@@ -171,15 +168,12 @@ def compute_split(
             raise SplitError("Unknown split method")
 
     tips = _percent_parts(base, tip_percent)
-    taxes = _percent_parts(base, tax_percent)
-    totals = {key: base[key] + tips[key] + taxes[key] for key in base}
+    totals = {key: base[key] + tips[key] for key in base}
     result = SplitResult(
         total=sum(totals.values()),
         mine=totals.get(ME, 0),
         friends={e: totals[e] for e in emails if totals[e] > 0},
-        service=sum(tips.values()) + sum(taxes.values()),
-        tip=sum(tips.values()),
-        tax=sum(taxes.values()),
+        service=sum(tips.values()),
     )
     if len(result.friends) == 0:
         raise SplitError("Nobody except you owes anything for this bill")
