@@ -136,7 +136,7 @@ async def preview_kaspi(
     return PreviewOut(rows=out)
 
 
-def _remember_choices(db: Session, user: User, rows: list) -> None:
+def remember_choices(db: Session, user: User, rows: list) -> None:
     """Запоминает категорию для описания, если пользователь выбрал не ту, что подставили бы автоматически."""
     globals_by_name = {c.name: c.id for c in _visible_categories(db, user) if c.user_id is None}
     fallback_id = globals_by_name.get(FALLBACK_CATEGORY)
@@ -166,7 +166,7 @@ def commit(
     if any(r.category_id not in allowed for r in data.rows):
         raise HTTPException(status_code=400, detail="Unknown category")
 
-    _remember_choices(db, user, data.rows)
+    remember_choices(db, user, data.rows)
 
     already = _imported_counts(db, user)
     seen: Counter = Counter()

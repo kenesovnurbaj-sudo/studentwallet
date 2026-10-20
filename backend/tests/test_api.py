@@ -200,3 +200,26 @@ def test_assistant_last_message_must_be_user(client, auth_headers):
         "/api/assistant/chat", headers=auth_headers, json={"messages": [{"role": "assistant", "content": "привет"}]}
     )
     assert resp.status_code == 400
+
+
+def test_bulk_change_category(client, auth_headers):
+    cats = client.get("/api/categories", headers=auth_headers).json()
+    a, b = cats[0]["id"], cats[1]["id"]
+    ids = [
+        client.post("/api/expenses", headers=auth_headers, json={"amount": 100 + i, "category_id": a, "note": "ИП NANGO"}).json()["id"]
+        for i in range(3)
+    ]
+    resp = client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": ids, "category_id": b})
+    assert resp.status_code == 200 and resp.json() == {"updated": 3}
+    assert {e["category_id"] for e in client.get("/api/expenses", headers=auth_headers).json()} == {b}
+
+
+def test_bulk_change_category_rejects_foreign_and_unknown(client, auth_headers):
+    cat = first_category_id(client, auth_headers)
+    other = register_and_login(client, "other@example.com")
+    foreign = client.post("/api/expenses", headers=other, json={"amount": 5, "category_id": cat}).json()["id"]
+    mine = client.post("/api/expenses", headers=auth_headers, json={"amount": 5, "category_id": cat}).json()["id"]
+    assert client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": [mine, foreign], "category_id": cat}).status_code == 403
+    assert client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": [mine, 99999], "category_id": cat}).status_code == 404
+    assert client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": [mine], "category_id": 99999}).status_code == 400
+    assert client.post("/api/expenses/bulk-category", json={"ids": [mine], "category_id": cat}).status_code == 401

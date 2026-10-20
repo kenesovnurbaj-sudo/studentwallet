@@ -80,6 +80,8 @@ export const api = {
   expenses: (categoryId) =>
     request(`/expenses${categoryId ? `?category_id=${encodeURIComponent(categoryId)}` : ''}`),
   addExpense: (data) => request('/expenses', { method: 'POST', body: data }),
+  bulkCategory: (ids, categoryId) =>
+    request('/expenses/bulk-category', { method: 'POST', body: { ids, category_id: categoryId } }),
   deleteExpense: (id) => request(`/expenses/${id}`, { method: 'DELETE' }),
   setBudget: (data) => request('/budgets', { method: 'PUT', body: data }),
   importKaspi: (file) => {

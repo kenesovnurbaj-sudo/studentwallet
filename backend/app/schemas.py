@@ -59,6 +59,15 @@ class ExpenseUpdate(BaseModel):
     spent_at: date | None = None
 
 
+class BulkCategoryChange(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=1000)
+    category_id: int
+
+
+class BulkCategoryResult(BaseModel):
+    updated: int
+
+
 class ExpenseOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

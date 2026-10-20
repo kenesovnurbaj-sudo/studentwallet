@@ -754,3 +754,44 @@ button:disabled {
   line-height: 1;
   color: var(--muted);
 }
+
+/* Поиск и массовые действия в истории */
+.search {
+  width: 100%;
+  height: 44px;
+  margin-bottom: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #e9edff;
+  border-radius: 10px;
+}
+
+.bulk-bar select {
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.bulk-bar .primary {
+  height: 40px;
+  padding: 0 16px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
