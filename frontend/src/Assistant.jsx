@@ -42,15 +42,15 @@ export default function Assistant() {
   if (!open) {
     return (
       <button type="button" className="chat-fab" onClick={() => setOpen(true)}>
-        Спросить ИИ
+        Спросить Валли
       </button>
     )
   }
 
   return (
-    <section className="chat" aria-label="ИИ-ассистент">
+    <section className="chat" aria-label="Валли, помощник по финансам">
       <header className="chat-head">
-        <strong>ИИ-ассистент</strong>
+        <strong>Валли</strong>
         <span>
           {messages.length > 0 && (
             <button type="button" className="link light" onClick={() => setMessages([])}>
@@ -66,7 +66,7 @@ export default function Assistant() {
       <div className="chat-body" aria-live="polite">
         {messages.length === 0 && (
           <div className="chat-empty">
-            <p>Я вижу ваш бюджет и последние траты. Спросите что-нибудь:</p>
+            <p>Привет! Я Валли, помощник по вашим финансам. Я вижу бюджет и последние траты, так что могу подсказать, где можно сэкономить. Спросите что-нибудь:</p>
             {HINTS.map((hint) => (
               <button key={hint} type="button" className="chat-hint" onClick={() => send(hint)} disabled={busy}>
                 {hint}
@@ -79,7 +79,7 @@ export default function Assistant() {
             {m.content}
           </p>
         ))}
-        {busy && <p className="bubble assistant typing">Думаю…</p>}
+        {busy && <p className="bubble assistant typing">Валли думает…</p>}
         {error && (
           <p className="error" role="alert">
             {error}

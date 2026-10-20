@@ -27,7 +27,7 @@ const KNOWN_ERRORS = {
   'Invalid or expired token': 'Сессия закончилась. Войдите снова',
   'Could not read statement': 'Не удалось прочитать выписку. Нужен PDF Kaspi Gold на английском языке',
   'File too large': 'Файл слишком большой (максимум 5 МБ)',
-  'AI unavailable': 'ИИ-ассистент сейчас недоступен. Попробуйте позже',
+  'AI unavailable': 'Валли сейчас недоступен. Попробуйте позже',
 }
 
 function errorText(data, status) {
