@@ -131,3 +131,46 @@ def test_person_detected_by_name_and_initial():
     # пополнение от человека тоже «Переводы», даже если банк назвал его не переводом
     assert guess_category("Айдар С.", "Replenishment", "income") == "Переводы"
     assert guess_category("Айдар С.", "Purchases", "expense") == "Переводы"
+
+
+def test_migration_moves_existing_people_to_transfers(db_session):
+    from app.migrations import move_people_to_transfers
+    from app.models import Category, Expense, User, Role
+    from app.security import hash_password
+
+    role = db_session.query(Role).filter_by(name="student").one()
+    user = User(email="m@example.com", password_hash=hash_password("password123"), role_id=role.id)
+    db_session.add(user)
+    db_session.commit()
+    cats = {c.name: c.id for c in db_session.query(Category).filter(Category.user_id.is_(None))}
+
+    def add(note, cat):
+        e = Expense(user_id=user.id, category_id=cats[cat], amount=100, note=note)
+        db_session.add(e)
+        db_session.commit()
+        return e
+
+    person, old_income, shop = add("Сара Т.", "Другое"), add("Айдар С.", "Еда"), add("ИП DANTE", "Другое")
+
+    assert move_people_to_transfers(db_session) == 2
+    db_session.refresh(person), db_session.refresh(old_income), db_session.refresh(shop)
+    assert person.category_id == old_income.category_id == cats["Переводы"]
+    assert shop.category_id == cats["Другое"]
+
+    # Разовая миграция: ручное исправление после неё не откатывается
+    person.category_id = cats["Еда"]
+    db_session.commit()
+    assert move_people_to_transfers(db_session) == 0
+    db_session.refresh(person)
+    assert person.category_id == cats["Еда"]
+
+
+def test_person_ignores_remembered_category(client, auth_headers, monkeypatch):
+    from app.models import MerchantRule
+
+    monkeypatch.setattr(imports, "extract_pdf_text", lambda data: SAMPLE)
+    cats = {c["name"]: c["id"] for c in client.get("/api/categories", headers=auth_headers).json()}
+    row = {"date": "2026-10-18", "amount": 680, "type": "expense", "note": "Сара Т.", "category_id": cats["Еда"]}
+    client.post("/api/import/commit", headers=auth_headers, json={"rows": [row]})
+    rows = client.post("/api/import/kaspi", headers=auth_headers, files={"file": ("s.pdf", b"x")}).json()["rows"]
+    assert next(r for r in rows if r["note"] == "Сара Т.")["category_id"] == cats["Переводы"]

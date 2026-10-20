@@ -110,3 +110,12 @@ class MerchantRule(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     note: Mapped[str] = mapped_column(String(255))  # описание в нижнем регистре
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+
+
+class AppMeta(Base):
+    """Служебные отметки, например какие разовые миграции данных уже выполнены."""
+
+    __tablename__ = "app_meta"
+
+    key: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255), default="")

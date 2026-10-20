@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_current_user
-from ..importer import FALLBACK_CATEGORY, extract_pdf_text, guess_category, parse_statement_text
+from ..importer import FALLBACK_CATEGORY, extract_pdf_text, guess_category, is_person, parse_statement_text
 from ..models import Category, Expense, MerchantRule, User
 
 router = APIRouter(prefix="/api/import", tags=["import"])
@@ -77,7 +77,7 @@ def _visible_categories(db: Session, user: User) -> list[Category]:
 
 def _pick_category(r, remembered: dict, visible_ids: set, categories: dict, fallback_id: int) -> int:
     """Приоритет: выбор пользователя из прошлых импортов, затем ключевые слова, затем «Другое»."""
-    saved = remembered.get(_rule_key(r.note))
+    saved = None if is_person(r.note) else remembered.get(_rule_key(r.note))
     if saved in visible_ids:
         return saved
     return categories.get(guess_category(r.note, r.kind, r.type), fallback_id)
@@ -143,7 +143,7 @@ def remember_choices(db: Session, user: User, rows: list) -> None:
     saved = {r.note: r for r in db.query(MerchantRule).filter(MerchantRule.user_id == user.id)}
     for row in rows:
         key = _rule_key(row.note)
-        if not key or row.type != "expense":
+        if not key or row.type != "expense" or is_person(row.note):
             continue
         auto_id = globals_by_name.get(guess_category(row.note), fallback_id)
         rule = saved.get(key)
