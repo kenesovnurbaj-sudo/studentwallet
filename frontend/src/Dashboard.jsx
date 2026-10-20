@@ -4,6 +4,7 @@ import { monthISO } from './format.js'
 import Hero from './Hero.jsx'
 import ExpenseForm from './ExpenseForm.jsx'
 import ExpenseList from './ExpenseList.jsx'
+import Assistant from './Assistant.jsx'
 
 export default function Dashboard({ user, onLogout }) {
   const month = monthISO()
@@ -74,6 +75,8 @@ export default function Dashboard({ user, onLogout }) {
           onChanged={refresh}
         />
       </main>
+
+      <Assistant />
     </div>
   )
 }

@@ -1,0 +1,14 @@
+[Unit]
+Description=StudentWallet API (FastAPI)
+After=network.target
+
+[Service]
+User=studentwallet
+WorkingDirectory=/opt/studentwallet/backend
+EnvironmentFile=/etc/studentwallet.env
+ExecStart=/opt/studentwallet/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=on-failure
+MemoryMax=400M
+
+[Install]
+WantedBy=multi-user.target

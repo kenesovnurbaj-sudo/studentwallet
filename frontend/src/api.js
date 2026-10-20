@@ -25,6 +25,7 @@ const KNOWN_ERRORS = {
   'Unknown category': 'Выбрана неизвестная категория',
   'Not authenticated': 'Войдите в аккаунт',
   'Invalid or expired token': 'Сессия закончилась. Войдите снова',
+  'AI unavailable': 'ИИ-ассистент сейчас недоступен. Попробуйте позже',
 }
 
 function errorText(data, status) {
@@ -78,5 +79,6 @@ export const api = {
   addExpense: (data) => request('/expenses', { method: 'POST', body: data }),
   deleteExpense: (id) => request(`/expenses/${id}`, { method: 'DELETE' }),
   setBudget: (data) => request('/budgets', { method: 'PUT', body: data }),
+  chat: (messages) => request('/assistant/chat', { method: 'POST', body: { messages } }),
   summary: (month) => request(`/budget/summary?month=${encodeURIComponent(month)}`),
 }

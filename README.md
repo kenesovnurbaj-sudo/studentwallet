@@ -48,6 +48,10 @@ uvicorn app.main:app --reload
 ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=ChangeMe123 uvicorn app.main:app --reload
 ```
 
+## Развёртывание на сервере
+
+Пошаговая инструкция (Nginx, systemd, SSH-туннель до Ollama): [deploy/DEPLOY.md](deploy/DEPLOY.md).
+
 ## Тесты
 
 ```bash
@@ -63,6 +67,7 @@ pytest
 - Траты и доходы: создание, список с фильтрами, изменение, удаление (только своих)
 - Месячный бюджет и `GET /api/budget/summary` (остаток, процент, дневной лимит)
 - Админ: список пользователей, блокировка
+- ИИ-ассистент: чат `POST /api/assistant/chat`, знает бюджет и траты пользователя, работает на локальной модели через Ollama (`OLLAMA_URL`, `OLLAMA_MODEL`)
 
 ## Что дальше
 

@@ -154,3 +154,49 @@ def test_admin_can_list_and_block_users(client, admin_headers):
 
     r = client.post("/api/auth/login", json={"email": "s@example.com", "password": "password123"})
     assert r.status_code == 403
+
+
+def test_assistant_requires_auth(client):
+    assert client.post("/api/assistant/chat", json={"messages": [{"role": "user", "content": "hi"}]}).status_code == 401
+
+
+def test_assistant_reply_gets_user_context(client, auth_headers, monkeypatch):
+    from app.routers import assistant
+
+    cat = first_category_id(client, auth_headers)
+    client.post("/api/expenses", headers=auth_headers, json={"amount": 1500, "category_id": cat, "note": "обед"})
+    client.put("/api/budgets", headers=auth_headers, json={"month": date.today().strftime("%Y-%m"), "limit_amount": 60000})
+
+    sent = {}
+
+    def fake_ollama(messages):
+        sent["messages"] = messages
+        return "Ответ ассистента"
+
+    monkeypatch.setattr(assistant, "ask_ollama", fake_ollama)
+    resp = client.post(
+        "/api/assistant/chat", headers=auth_headers, json={"messages": [{"role": "user", "content": "Как мои траты?"}]}
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"reply": "Ответ ассистента"}
+    system = sent["messages"][0]
+    assert system["role"] == "system"
+    assert "1500" in system["content"] and "60000" in system["content"] and "обед" in system["content"]
+    assert "student@example.com" not in system["content"]
+
+
+def test_assistant_unavailable_returns_503(client, auth_headers, monkeypatch):
+    from app.routers import assistant
+
+    monkeypatch.setattr(assistant, "OLLAMA_URL", "http://127.0.0.1:9")  # там никого нет
+    resp = client.post(
+        "/api/assistant/chat", headers=auth_headers, json={"messages": [{"role": "user", "content": "привет"}]}
+    )
+    assert resp.status_code == 503
+
+
+def test_assistant_last_message_must_be_user(client, auth_headers):
+    resp = client.post(
+        "/api/assistant/chat", headers=auth_headers, json={"messages": [{"role": "assistant", "content": "привет"}]}
+    )
+    assert resp.status_code == 400
