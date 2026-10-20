@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import { money, todayISO } from './format.js'
-import SplitEditor, { buildRequest, emptySplit, incompleteReason } from './SplitEditor.jsx'
+import SplitEditor, {
+  buildRequest,
+  emptySplit,
+  incompleteReason,
+} from './SplitEditor.jsx'
 
-// Одна форма и для новой записи, и для редактирования (когда передан editing).
-export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit, onCategoryCreated }) {
+export default function ExpenseForm({
+  categories,
+  editing,
+  onSaved,
+  onCancelEdit,
+  onCategoryCreated,
+}) {
   const [type, setType] = useState('expense')
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -16,33 +25,38 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
   const [quickBusy, setQuickBusy] = useState(false)
   const [quickHint, setQuickHint] = useState('')
   const [split, setSplit] = useState(emptySplit())
-
   const [newCatOpen, setNewCatOpen] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [newCatIcon, setNewCatIcon] = useState('🏷️')
 
   const sectionRef = useRef(null)
 
-  // Когда категории загрузились, выбираем первую по умолчанию
   useEffect(() => {
-    if (!categoryId && categories.length) setCategoryId(String(categories[0].id))
+    if (!categoryId && categories.length) {
+      setCategoryId(String(categories[0].id))
+    }
   }, [categories, categoryId])
 
-  // «lunch at canteen 2500» -> подставляем сумму, категорию, дату и описание в форму; сохраняет пользователь сам
   async function quickFill(e) {
     e.preventDefault()
     if (!quick.trim()) return
+
     setError('')
     setQuickHint('')
     setQuickBusy(true)
+
     try {
       const r = await api.parseExpense(quick.trim())
       setType(r.type)
       setAmount(String(r.amount))
       setCategoryId(String(r.category_id))
-      setNote(r.note)
+      setNote(r.note || '')
       setDate(r.spent_at)
-      setQuickHint(`Filled in: ${r.category}${r.source === 'ai' ? ' (picked by AI)' : ''}. Check the details and press Add.`)
+      setQuickHint(
+        `Filled in: ${r.category}${
+          r.source === 'ai' ? ' (picked by AI)' : ''
+        }. Check the details and press Add.`
+      )
       setQuick('')
     } catch (err) {
       setError(err.message)
@@ -51,9 +65,9 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
     }
   }
 
-  // Нажали «изменить» в истории: подставляем данные записи и прокручиваем к форме
   useEffect(() => {
     if (!editing) return
+
     setType(editing.type)
     setAmount(String(editing.amount))
     setCategoryId(String(editing.category_id))
@@ -61,7 +75,10 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
     setDate(editing.spent_at)
     setSplit(emptySplit())
     setError('')
-    if (sectionRef.current) sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    sectionRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
   }, [editing])
 
   function resetFields() {
@@ -78,7 +95,6 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
     onCancelEdit()
   }
 
-  // Редактируем трату, которую вы разделили: сумму менять нельзя, она связана с долгами друзей
   const sharedEdit = Boolean(editing && editing.paid_total != null)
   const splitting = split.on && !editing && type === 'expense'
   const itemsMode = splitting && split.mode === 'items'
@@ -86,8 +102,19 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
   async function submit(e) {
     e.preventDefault()
     setError('')
+
+    if (!date || date > todayISO()) {
+      setError('Choose today or an earlier date.')
+      return
+    }
+
     const value = Number(amount)
-    const common = { category_id: Number(categoryId), type, note: note.trim(), spent_at: date }
+    const common = {
+      category_id: Number(categoryId),
+      type,
+      note: note.trim(),
+      spent_at: date,
+    }
     let payload
 
     if (splitting) {
@@ -96,11 +123,15 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
         setError(reason)
         return
       }
-      payload = { ...buildRequest(split, amount), ...common, source: 'web' }
+      payload = {
+        ...buildRequest(split, amount),
+        ...common,
+        source: 'web',
+      }
     } else if (sharedEdit) {
       payload = common
     } else {
-      if (!value || value <= 0) {
+      if (!Number.isFinite(value) || value <= 0) {
         setError('Enter an amount greater than zero')
         return
       }
@@ -109,8 +140,11 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
 
     setBusy(true)
     try {
-      if (editing) await api.updateExpense(editing.id, payload)
-      else await api.addExpense({ ...payload, source: 'web' })
+      if (editing) {
+        await api.updateExpense(editing.id, payload)
+      } else {
+        await api.addExpense({ ...payload, source: 'web' })
+      }
       resetFields()
       onSaved()
     } catch (err) {
@@ -126,9 +160,13 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
       setError('Enter a category name')
       return
     }
+
     setError('')
     try {
-      const created = await api.addCategory({ name, icon: newCatIcon.trim() })
+      const created = await api.addCategory({
+        name,
+        icon: newCatIcon.trim(),
+      })
       await onCategoryCreated()
       setCategoryId(String(created.id))
       setNewCatOpen(false)
@@ -140,7 +178,7 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
 
   function onNewCatKey(e) {
     if (e.key === 'Enter') {
-      e.preventDefault() // не отправляем основную форму
+      e.preventDefault()
       createCategory()
     }
   }
@@ -148,6 +186,7 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
   return (
     <section className="block" ref={sectionRef}>
       <h2>{editing ? 'Edit entry' : 'New entry'}</h2>
+
       {!editing && (
         <>
           <form className="quick" onSubmit={quickFill}>
@@ -162,13 +201,18 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
               placeholder="Type it like “lunch at canteen 2500”"
               autoComplete="off"
             />
-            <button className="secondary" type="submit" disabled={quickBusy || !quick.trim()}>
+            <button
+              className="secondary"
+              type="submit"
+              disabled={quickBusy || !quick.trim()}
+            >
               {quickBusy ? 'Reading…' : 'Fill in'}
             </button>
           </form>
           {quickHint && <p className="ok-note">{quickHint}</p>}
         </>
       )}
+
       <form className="expense-form" onSubmit={submit}>
         <div className="segmented" role="group" aria-label="Entry type">
           <button
@@ -193,7 +237,9 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
           {itemsMode ? (
             <div className="amount-auto">
               <span>Bill total</span>
-              <p className="muted small">Calculated from the items below</p>
+              <p className="muted small">
+                Calculated from the items below
+              </p>
             </div>
           ) : (
             <label>
@@ -213,7 +259,11 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
           )}
           <label>
             Category
-            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              required
+            >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.icon} {c.name}
@@ -227,7 +277,12 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
           <div className="new-cat">
             <label className="new-cat-icon">
               Icon
-              <input value={newCatIcon} maxLength={8} onChange={(e) => setNewCatIcon(e.target.value)} onKeyDown={onNewCatKey} />
+              <input
+                value={newCatIcon}
+                maxLength={8}
+                onChange={(e) => setNewCatIcon(e.target.value)}
+                onKeyDown={onNewCatKey}
+              />
             </label>
             <label className="new-cat-name">
               Category name
@@ -240,15 +295,27 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
                 autoFocus
               />
             </label>
-            <button type="button" className="secondary" onClick={createCategory}>
+            <button
+              type="button"
+              className="secondary"
+              onClick={createCategory}
+            >
               Create
             </button>
-            <button type="button" className="link" onClick={() => setNewCatOpen(false)}>
+            <button
+              type="button"
+              className="link"
+              onClick={() => setNewCatOpen(false)}
+            >
               Cancel
             </button>
           </div>
         ) : (
-          <button type="button" className="link start" onClick={() => setNewCatOpen(true)}>
+          <button
+            type="button"
+            className="link start"
+            onClick={() => setNewCatOpen(true)}
+          >
             New category
           </button>
         )}
@@ -265,14 +332,22 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
           </label>
           <label>
             Date
-            <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              required
+              max={todayISO()}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </label>
         </div>
 
         {sharedEdit && (
           <p className="notice">
-            This is a shared bill: the whole bill is {money(editing.paid_total)}, your share is {money(editing.amount)}. The
-            amount cannot be changed, but you can edit the category, note and date.
+            This is a shared bill: the whole bill is{' '}
+            {money(editing.paid_total)}, your share is{' '}
+            {money(editing.amount)}. The amount cannot be changed, but you
+            can edit the category, note and date.
           </p>
         )}
 
@@ -285,11 +360,21 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
                 aria-pressed={split.on}
                 onClick={() => setSplit({ ...split, on: !split.on })}
               >
-                {split.on ? '✓ Splitting with friends' : '+ Split with friends'}
+                {split.on
+                  ? '✓ Splitting with friends'
+                  : '+ Split with friends'}
               </button>
-              <span className="muted small">Paid for others? Split the bill and track who owes you.</span>
+              <span className="muted small">
+                Paid for others? Split the bill and track who owes you.
+              </span>
             </div>
-            {split.on && <SplitEditor split={split} amount={amount} onChange={setSplit} />}
+            {split.on && (
+              <SplitEditor
+                split={split}
+                amount={amount}
+                onChange={setSplit}
+              />
+            )}
           </>
         )}
 
@@ -300,7 +385,11 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
         )}
 
         <div className="row">
-          <button className="primary" type="submit" disabled={busy || !categoryId}>
+          <button
+            className="primary"
+            type="submit"
+            disabled={busy || !categoryId}
+          >
             {busy ? 'Saving…' : editing ? 'Save changes' : 'Add'}
           </button>
           {editing && (
