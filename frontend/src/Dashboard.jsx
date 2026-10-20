@@ -4,6 +4,7 @@ import { monthISO } from './format.js'
 import Hero from './Hero.jsx'
 import ExpenseForm from './ExpenseForm.jsx'
 import ExpenseList from './ExpenseList.jsx'
+import ImportStatement from './ImportStatement.jsx'
 import Assistant from './Assistant.jsx'
 
 export default function Dashboard({ user, onLogout }) {
@@ -67,6 +68,7 @@ export default function Dashboard({ user, onLogout }) {
         )}
         <Hero summary={summary} month={month} onSaved={loadSummary} />
         <ExpenseForm categories={categories} onAdded={refresh} />
+        <ImportStatement categories={categories} onImported={refresh} />
         <ExpenseList
           expenses={expenses}
           categories={categories}

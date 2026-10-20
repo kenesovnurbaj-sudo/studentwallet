@@ -48,6 +48,8 @@ uvicorn app.main:app --reload
 ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=ChangeMe123 uvicorn app.main:app --reload
 ```
 
+- Импорт выписки Kaspi Gold (PDF, английская версия): `POST /api/import/kaspi` (предпросмотр) и `POST /api/import/commit`. Категории подбираются по ключевым словам, повторная загрузка не создаёт дубликатов
+
 ## Развёртывание на сервере
 
 Пошаговая инструкция (Nginx, systemd, SSH-туннель до Ollama): [deploy/DEPLOY.md](deploy/DEPLOY.md).

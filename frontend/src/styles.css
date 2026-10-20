@@ -625,3 +625,82 @@ button:disabled {
 .chat-form .primary {
   padding: 0 16px;
 }
+
+/* Импорт выписки */
+.hint {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.ok-note {
+  margin-top: 12px;
+  color: #15703f;
+  font-weight: 500;
+}
+
+.import-scroll {
+  max-height: 420px;
+  margin-top: 12px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.import-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.import-table th,
+.import-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.import-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+
+.import-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.import-table .num.income {
+  color: #15703f;
+}
+
+.import-table tr.off {
+  opacity: 0.5;
+}
+
+.import-table select {
+  max-width: 150px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.import-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}

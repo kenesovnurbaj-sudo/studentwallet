@@ -25,6 +25,8 @@ const KNOWN_ERRORS = {
   'Unknown category': 'Выбрана неизвестная категория',
   'Not authenticated': 'Войдите в аккаунт',
   'Invalid or expired token': 'Сессия закончилась. Войдите снова',
+  'Could not read statement': 'Не удалось прочитать выписку. Нужен PDF Kaspi Gold на английском языке',
+  'File too large': 'Файл слишком большой (максимум 5 МБ)',
   'AI unavailable': 'ИИ-ассистент сейчас недоступен. Попробуйте позже',
 }
 
@@ -39,7 +41,8 @@ function errorText(data, status) {
 async function request(path, { method = 'GET', body, auth = true } = {}) {
   const headers = {}
   const token = getToken()
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const isForm = body instanceof FormData // браузер сам выставит Content-Type с boundary
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
   if (auth && token) headers.Authorization = `Bearer ${token}`
 
   let res
@@ -47,7 +50,7 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
     res = await fetch(`/api${path}`, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(0, 'Нет связи с сервером. Проверьте, что backend запущен')
@@ -79,6 +82,12 @@ export const api = {
   addExpense: (data) => request('/expenses', { method: 'POST', body: data }),
   deleteExpense: (id) => request(`/expenses/${id}`, { method: 'DELETE' }),
   setBudget: (data) => request('/budgets', { method: 'PUT', body: data }),
+  importKaspi: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/import/kaspi', { method: 'POST', body: form })
+  },
+  importCommit: (rows) => request('/import/commit', { method: 'POST', body: { rows } }),
   chat: (messages) => request('/assistant/chat', { method: 'POST', body: { messages } }),
   summary: (month) => request(`/budget/summary?month=${encodeURIComponent(month)}`),
 }
