@@ -119,6 +119,17 @@ class BudgetSummary(BaseModel):
     daily_limit: float
 
 
+class CategoryBalance(BaseModel):
+    category_id: int
+    category: str
+    icon: str
+    limit: float | None  # None = лимит на категорию не задан
+    spent: float
+    remaining: float | None
+    percent_used: float | None
+    status: str  # ok | watch | over | no_limit
+
+
 class AlertOut(BaseModel):
     code: str
     level: str

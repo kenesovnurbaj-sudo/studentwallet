@@ -3,7 +3,7 @@ import { api } from './api.js'
 import { money, monthTitle } from './format.js'
 
 // Предложение ИИ: как разделить месячный бюджет по категориям. Суммы можно поправить перед применением.
-export default function BudgetSplit({ month, onClose }) {
+export default function BudgetSplit({ month, onSaved, onClose }) {
   const [data, setData] = useState(null)
   const [amounts, setAmounts] = useState({}) // category_id -> строка из поля ввода
   const [error, setError] = useState('')
@@ -42,6 +42,7 @@ export default function BudgetSplit({ month, onClose }) {
     try {
       const { saved: n } = await api.saveBudgetSplit(month, items)
       setSaved(`Saved limits for ${n} categories.`)
+      onSaved()
     } catch (err) {
       setError(err.message)
     } finally {

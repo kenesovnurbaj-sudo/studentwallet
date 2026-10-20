@@ -223,3 +223,38 @@ def test_bulk_change_category_rejects_foreign_and_unknown(client, auth_headers):
     assert client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": [mine, 99999], "category_id": cat}).status_code == 404
     assert client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": [mine], "category_id": 99999}).status_code == 400
     assert client.post("/api/expenses/bulk-category", json={"ids": [mine], "category_id": cat}).status_code == 401
+
+
+def test_category_balances(client, auth_headers):
+    month = date.today().strftime("%Y-%m")
+    cats = {c["name"]: c["id"] for c in client.get("/api/categories", headers=auth_headers).json()}
+    client.put(
+        "/api/budgets/split",
+        headers=auth_headers,
+        json={"month": month, "items": [{"category_id": cats["Food"], "limit_amount": 10000}, {"category_id": cats["Transport"], "limit_amount": 5000}]},
+    )
+
+    def add(amount, cat, type_="expense", spent_at=None):
+        body = {"amount": amount, "category_id": cats[cat], "type": type_}
+        if spent_at:
+            body["spent_at"] = spent_at
+        client.post("/api/expenses", headers=auth_headers, json=body)
+
+    add(8500, "Food")  # 85% -> watch
+    add(6000, "Transport")  # больше лимита -> over
+    add(1200, "Entertainment")  # лимита нет
+    add(50000, "Food", type_="income")  # доходы не считаются
+    add(999, "Food", spent_at="2020-01-01")  # другой месяц не считается
+
+    rows = {r["category"]: r for r in client.get("/api/budget/categories", headers=auth_headers).json()}
+    assert set(rows) == {"Food", "Transport", "Entertainment"}
+    assert (rows["Food"]["spent"], rows["Food"]["remaining"], rows["Food"]["status"]) == (8500, 1500, "watch")
+    assert (rows["Transport"]["remaining"], rows["Transport"]["status"]) == (-1000, "over")
+    assert (rows["Entertainment"]["limit"], rows["Entertainment"]["status"]) == (None, "no_limit")
+    order = [r["category"] for r in client.get("/api/budget/categories", headers=auth_headers).json()]
+    assert order == ["Food", "Transport", "Entertainment"]  # больше трат сверху
+
+
+def test_category_balances_empty_and_auth(client, auth_headers):
+    assert client.get("/api/budget/categories", headers=auth_headers).json() == []
+    assert client.get("/api/budget/categories").status_code == 401

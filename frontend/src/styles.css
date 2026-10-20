@@ -898,3 +898,61 @@ button:disabled {
 .forecast-exceeded .meter-fill {
   background: var(--bad);
 }
+
+/* Остаток по категориям */
+.cat-balances {
+  margin-top: 24px;
+}
+
+.cat-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  list-style: none;
+}
+
+.cat-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 500;
+}
+
+.cat-amount {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cat-bar {
+  height: 10px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--line);
+}
+
+.cat-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--ok);
+  transition: width 0.5s ease;
+}
+
+.cat-watch .cat-fill {
+  background: var(--warn);
+}
+
+.cat-over .cat-fill {
+  background: var(--bad);
+}
+
+.cat-left {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.cat-over .cat-left {
+  color: var(--error-text);
+  font-weight: 600;
+}

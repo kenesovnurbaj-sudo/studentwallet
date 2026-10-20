@@ -7,10 +7,9 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_current_user
-from ..models import Budget, Expense, User
-from ..models import Category
 from ..forecast import build_forecast
-from ..schemas import BudgetOut, ForecastOut, BudgetSet, BudgetSplitSaved, BudgetSplitSet, BudgetSummary
+from ..models import Budget, Category, Expense, User
+from ..schemas import BudgetOut, CategoryBalance, ForecastOut, BudgetSet, BudgetSplitSaved, BudgetSplitSet, BudgetSummary
 
 router = APIRouter(prefix="/api", tags=["budgets"])
 
@@ -150,3 +149,53 @@ def budget_forecast(
     """Прогноз расходов до конца месяца и предупреждения о слишком быстрых тратах."""
     summary = budget_summary(month=month, user=user, db=db)  # 404, если бюджет на месяц не задан
     return build_forecast(month, summary.limit, summary.spent, date.today())
+
+
+@router.get("/budget/categories", response_model=list[CategoryBalance])
+def category_balances(
+    month: str = Query(default_factory=_current_month, pattern=MONTH_PATTERN),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Траты и остаток по каждой категории за месяц. Показываем категории с заданным лимитом или с тратами."""
+    first_day, last_day = _month_bounds(month)
+    spent_by_cat = dict(
+        db.query(Expense.category_id, func.sum(Expense.amount))
+        .filter(
+            Expense.user_id == user.id,
+            Expense.type == "expense",
+            Expense.spent_at >= first_day,
+            Expense.spent_at <= last_day,
+        )
+        .group_by(Expense.category_id)
+        .all()
+    )
+    limits = {
+        b.category_id: float(b.limit_amount)
+        for b in db.query(Budget).filter(Budget.user_id == user.id, Budget.month == month, Budget.category_id.isnot(None))
+    }
+    ids = set(spent_by_cat) | set(limits)
+    categories = {c.id: c for c in db.query(Category).filter(Category.id.in_(ids))} if ids else {}
+
+    result = []
+    for cid in ids:
+        cat = categories.get(cid)
+        if cat is None:
+            continue
+        spent = float(spent_by_cat.get(cid, 0))
+        limit = limits.get(cid)
+        if limit is None:
+            remaining = percent = None
+            status = "no_limit"
+        else:
+            remaining = round(limit - spent, 2)
+            percent = round(spent / limit * 100, 1)
+            status = "over" if spent > limit else "watch" if percent >= 80 else "ok"
+        result.append(
+            CategoryBalance(
+                category_id=cid, category=cat.name, icon=cat.icon, limit=limit, spent=round(spent, 2),
+                remaining=remaining, percent_used=percent, status=status,
+            )
+        )
+    # сначала то, что тратится больше всего
+    return sorted(result, key=lambda r: (-r.spent, r.category))
