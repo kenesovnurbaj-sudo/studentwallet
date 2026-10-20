@@ -94,7 +94,7 @@ def test_manual_entry_is_flagged(client, auth_headers, monkeypatch):
 
 def test_person_transfers_go_to_transfers_category():
     assert guess_category("Сара Т.", "Transfers", "expense") == "Переводы"
-    assert guess_category("Иван И.", "Replenishment", "income") == "Другое"
+    assert guess_category("From card of other banks", "Replenishment", "income") == "Другое"
     assert guess_category("Magnum Cash&Carry", "Purchases", "expense") == "Еда"
 
 
