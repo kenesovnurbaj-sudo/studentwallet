@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,13 @@ def create_category(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Дубликат: такое же имя среди глобальных или своих категорий, без учёта регистра.
+    # Сравниваем в Python: lower() в SQLite не работает с кириллицей ("Еда" != "еда").
+    wanted = data.name.casefold()
+    visible = db.query(Category.name).filter(or_(Category.user_id.is_(None), Category.user_id == user.id))
+    if any(name.casefold() == wanted for (name,) in visible):
+        raise HTTPException(status_code=409, detail="Category already exists")
+
     category = Category(name=data.name, icon=data.icon, user_id=user.id)
     db.add(category)
     db.commit()
