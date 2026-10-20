@@ -7,13 +7,13 @@ from .models import Category, Role, User
 from .security import hash_password
 
 DEFAULT_CATEGORIES = [
-    ("Еда", "🍔"),
-    ("Транспорт", "🚌"),
-    ("Учёба", "📚"),
-    ("Развлечения", "🎬"),
-    ("Подписки", "📱"),
-    ("Переводы", "💸"),
-    ("Другое", "🧾"),
+    ("Food", "🍔"),
+    ("Transport", "🚌"),
+    ("Education", "📚"),
+    ("Entertainment", "🎬"),
+    ("Subscriptions", "📱"),
+    ("Transfers", "💸"),
+    ("Other", "🧾"),
 ]
 
 

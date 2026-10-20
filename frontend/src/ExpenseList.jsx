@@ -12,8 +12,8 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
   const byId = Object.fromEntries(categories.map((c) => [c.id, c]))
 
   async function remove(item) {
-    const name = item.note || (byId[item.category_id] && byId[item.category_id].name) || 'запись'
-    if (!window.confirm(`Удалить «${name}» на ${money(item.amount)}?`)) return
+    const name = item.note || (byId[item.category_id] && byId[item.category_id].name) || 'entry'
+    if (!window.confirm(`Delete “${name}” for ${money(item.amount)}?`)) return
     setError('')
     try {
       await api.deleteExpense(item.id)
@@ -70,14 +70,14 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
   return (
     <section className="block">
       <div className="block-head">
-        <h2>История</h2>
+        <h2>History</h2>
         <button className="link" type="button" onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
-          {selecting ? 'Готово' : 'Выбрать несколько'}
+          {selecting ? 'Done' : 'Select multiple'}
         </button>
         <label className="filter">
-          <span className="sr-only">Фильтр по категории</span>
+          <span className="sr-only">Filter by category</span>
           <select value={filter} onChange={(e) => onFilter(e.target.value)}>
-            <option value="">Все категории</option>
+            <option value="">All categories</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.icon} {c.name}
@@ -92,17 +92,17 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Поиск по описанию, например «NANGO»"
-        aria-label="Поиск по описанию"
+        placeholder="Search by note, for example “NANGO”"
+        aria-label="Search by note"
       />
 
       {selecting && (
         <div className="bulk-bar">
           <button className="secondary" type="button" onClick={toggleAll} disabled={shown.length === 0}>
-            {allPicked ? 'Снять выбор' : `Выбрать все (${shown.length})`}
+            {allPicked ? 'Clear selection' : `Select all (${shown.length})`}
           </button>
-          <select value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Новая категория">
-            <option value="">Новая категория…</option>
+          <select value={target} onChange={(e) => setTarget(e.target.value)} aria-label="New category">
+            <option value="">New category…</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.icon} {c.name}
@@ -110,7 +110,7 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
             ))}
           </select>
           <button className="primary" type="button" disabled={busy || !target || pickedShown.length === 0} onClick={applyBulk}>
-            {busy ? 'Меняем…' : `Применить (${pickedShown.length})`}
+            {busy ? 'Updating…' : `Apply (${pickedShown.length})`}
           </button>
         </div>
       )}
@@ -122,10 +122,10 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
       )}
 
       {shown.length === 0 && expenses.length > 0 ? (
-        <p className="empty">Ничего не найдено.</p>
+        <p className="empty">Nothing found.</p>
       ) : expenses.length === 0 ? (
         <p className="empty">
-          {filter ? 'В этой категории записей нет.' : 'Записей пока нет. Добавьте первую трату выше.'}
+          {filter ? 'No entries in this category.' : 'No entries yet. Add your first expense above.'}
         </p>
       ) : (
         <ul className="rows">
@@ -139,17 +139,17 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
                     type="checkbox"
                     checked={picked.has(item.id)}
                     onChange={() => toggle(item.id)}
-                    aria-label={`Выбрать: ${item.note || 'запись'} ${money(item.amount)}`}
+                    aria-label={`Select: ${item.note || 'entry'} ${money(item.amount)}`}
                   />
                 )}
                 <span className="row-icon" aria-hidden="true">
                   {cat ? cat.icon : '🧾'}
                 </span>
                 <span className="row-main">
-                  <span className="row-title">{item.note || (cat ? cat.name : 'Без названия')}</span>
+                  <span className="row-title">{item.note || (cat ? cat.name : 'Untitled')}</span>
                   <span className="row-sub">
-                    {cat ? cat.name : 'Без категории'}, {shortDate(item.spent_at)}
-                    {item.source === 'siri' ? ', через Siri' : ''}
+                    {cat ? cat.name : 'No category'}, {shortDate(item.spent_at)}
+                    {item.source === 'siri' ? ', via Siri' : ''}
                   </span>
                 </span>
                 <span className={`row-amount ${income ? 'plus' : ''}`}>
@@ -160,7 +160,7 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
                   className="icon-btn"
                   type="button"
                   onClick={() => remove(item)}
-                  aria-label={`Удалить запись на ${money(item.amount)}`}
+                  aria-label={`Delete entry for ${money(item.amount)}`}
                 >
                   ×
                 </button>

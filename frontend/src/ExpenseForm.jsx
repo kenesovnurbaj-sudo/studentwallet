@@ -21,7 +21,7 @@ export default function ExpenseForm({ categories, onAdded }) {
     setError('')
     const value = Number(amount)
     if (!value || value <= 0) {
-      setError('Введите сумму больше нуля')
+      setError('Enter an amount greater than zero')
       return
     }
     setBusy(true)
@@ -46,16 +46,16 @@ export default function ExpenseForm({ categories, onAdded }) {
 
   return (
     <section className="block">
-      <h2>Новая запись</h2>
+      <h2>New entry</h2>
       <form className="expense-form" onSubmit={submit}>
-        <div className="segmented" role="group" aria-label="Тип записи">
+        <div className="segmented" role="group" aria-label="Entry type">
           <button
             type="button"
             className={type === 'expense' ? 'on' : ''}
             aria-pressed={type === 'expense'}
             onClick={() => setType('expense')}
           >
-            Расход
+            Expense
           </button>
           <button
             type="button"
@@ -63,13 +63,13 @@ export default function ExpenseForm({ categories, onAdded }) {
             aria-pressed={type === 'income'}
             onClick={() => setType('income')}
           >
-            Доход
+            Income
           </button>
         </div>
 
         <div className="grid-2">
           <label>
-            Сумма, ₸
+            Amount, ₸
             <input
               type="number"
               inputMode="decimal"
@@ -82,7 +82,7 @@ export default function ExpenseForm({ categories, onAdded }) {
             />
           </label>
           <label>
-            Категория
+            Category
             <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -95,16 +95,16 @@ export default function ExpenseForm({ categories, onAdded }) {
 
         <div className="grid-2">
           <label>
-            Комментарий
+            Note
             <input
               value={note}
               maxLength={255}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Например, обед"
+              placeholder="For example, lunch"
             />
           </label>
           <label>
-            Дата
+            Date
             <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
         </div>
@@ -116,7 +116,7 @@ export default function ExpenseForm({ categories, onAdded }) {
         )}
 
         <button className="primary" type="submit" disabled={busy || !categoryId}>
-          {busy ? 'Сохраняем…' : 'Добавить'}
+          {busy ? 'Saving…' : 'Add'}
         </button>
       </form>
     </section>

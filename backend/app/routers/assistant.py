@@ -28,15 +28,15 @@ OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "120"))
 MAX_HISTORY = 20  # сколько последних сообщений диалога отправляем модели
 RECENT_LIMIT = 15  # сколько последних операций показываем модели
 
-SYSTEM_PROMPT = """Тебя зовут Валли (Wally). Ты дружелюбный финансовый помощник студента в приложении StudentWallet.
-Если спрашивают, кто ты, представься как Валли, помощник по личным финансам в этом приложении. Ты программа, а не человек.
-Отвечай на языке пользователя (русский, казахский или английский), коротко, тепло и по делу, без лишнего пафоса.
-Помогай разбираться в тратах, планировать бюджет, находить, где можно сэкономить.
-Опирайся только на данные пользователя ниже и бери готовые цифры оттуда, сам ничего не пересчитывай. Если данных не хватает, так и скажи, не выдумывай цифры.
-Ты не добавляешь и не меняешь траты сам: если пользователь просит, объясни, как это сделать в приложении.
-Не давай юридических и инвестиционных советов.
+SYSTEM_PROMPT = """Your name is WALL·E. You are a friendly personal-finance assistant for students in the StudentWallet app.
+If asked who you are, introduce yourself as WALL·E, a money helper inside this app. You are a program, not a person.
+Reply in the user's language: English by default, or Russian or Kazakh if the user writes in them. Keep answers short, warm and to the point, without hype.
+Help the user understand their spending, plan the budget and find where they can save.
+Use only the user's data below and take ready-made numbers from it; do not recalculate anything yourself. If the data is not enough, say so and do not invent numbers.
+You do not add or change expenses yourself: if asked, explain how to do it in the app.
+Do not give legal or investment advice.
 
-Данные пользователя:
+User data:
 {context}"""
 
 
@@ -58,16 +58,16 @@ def build_context(db: Session, user: User) -> str:
     today = date.today()
     month = today.strftime("%Y-%m")
     first_day, last_day = _month_bounds(month)
-    lines = [f"Сегодня {today.isoformat()}. Имя: {user.full_name or 'студент'}. Валюта: {user.currency}."]
+    lines = [f"Today is {today.isoformat()}. Name: {user.full_name or 'student'}. Currency: {user.currency}."]
 
     try:
         s = budget_summary(month=month, user=user, db=db)
         lines.append(
-            f"Бюджет на {month}: лимит {s.limit}, потрачено {s.spent} ({s.percent_used}%), "
-            f"осталось {s.remaining}, дней до конца месяца {s.days_left}, можно тратить в день {s.daily_limit}."
+            f"Budget for {month}: limit {s.limit}, spent {s.spent} ({s.percent_used}%), "
+            f"remaining {s.remaining}, days left in the month {s.days_left}, can spend per day {s.daily_limit}."
         )
     except HTTPException:
-        lines.append(f"Бюджет на {month} не задан.")
+        lines.append(f"No budget is set for {month}.")
 
     by_category = (
         db.query(Category.name, func.sum(Expense.amount))
@@ -84,13 +84,13 @@ def build_context(db: Session, user: User) -> str:
     )
     if by_category:
         total = sum(float(t) for _, t in by_category)
-        lines.append(f"Всего расходов за месяц: {total:g}.")
+        lines.append(f"Total expenses this month: {total:g}.")
         lines.append(
-            "Расходы за месяц по категориям (от большего к меньшему): "
-            + ", ".join(f"{n}: {float(t):g} ({float(t) / total * 100:.0f}% всех расходов)" for n, t in by_category)
+            "Expenses this month by category (largest first): "
+            + ", ".join(f"{n}: {float(t):g} ({float(t) / total * 100:.0f}% of all expenses)" for n, t in by_category)
         )
     else:
-        lines.append("Расходов в этом месяце пока нет.")
+        lines.append("There are no expenses this month yet.")
 
     recent = (
         db.query(Expense, Category.name)
@@ -101,9 +101,9 @@ def build_context(db: Session, user: User) -> str:
         .all()
     )
     if recent:
-        lines.append("Последние операции:")
+        lines.append("Recent transactions:")
         for e, cat in recent:
-            kind = "расход" if e.type == "expense" else "доход"
+            kind = "expense" if e.type == "expense" else "income"
             note = f" ({e.note})" if e.note else ""
             lines.append(f"- {e.spent_at.isoformat()} {kind} {float(e.amount):g} {cat}{note}")
     return "\n".join(lines)

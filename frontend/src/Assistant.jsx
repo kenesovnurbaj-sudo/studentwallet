@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 
-const HINTS = ['Как мои траты в этом месяце?', 'Где я могу сэкономить?', 'Хватит ли мне бюджета до конца месяца?']
+const HINTS = ['How is my spending this month?', 'Where can I save money?', 'Will my budget last until the end of the month?']
 
 // Плавающий чат с ИИ-ассистентом. История хранится только в памяти страницы.
 export default function Assistant() {
@@ -42,22 +42,22 @@ export default function Assistant() {
   if (!open) {
     return (
       <button type="button" className="chat-fab" onClick={() => setOpen(true)}>
-        Спросить Валли
+        Ask WALL·E
       </button>
     )
   }
 
   return (
-    <section className="chat" aria-label="Валли, помощник по финансам">
+    <section className="chat" aria-label="WALL·E, your money assistant">
       <header className="chat-head">
-        <strong>Валли</strong>
+        <strong>WALL·E</strong>
         <span>
           {messages.length > 0 && (
             <button type="button" className="link light" onClick={() => setMessages([])}>
-              Очистить
+              Clear
             </button>
           )}
-          <button type="button" className="chat-close" onClick={() => setOpen(false)} aria-label="Закрыть чат">
+          <button type="button" className="chat-close" onClick={() => setOpen(false)} aria-label="Close chat">
             ×
           </button>
         </span>
@@ -66,7 +66,7 @@ export default function Assistant() {
       <div className="chat-body" aria-live="polite">
         {messages.length === 0 && (
           <div className="chat-empty">
-            <p>Привет! Я Валли, помощник по вашим финансам. Я вижу бюджет и последние траты, так что могу подсказать, где можно сэкономить. Спросите что-нибудь:</p>
+            <p>Hi! I’m WALL·E, your money helper. I can see your budget and recent spending, so I can point out where you could save. Ask me anything:</p>
             {HINTS.map((hint) => (
               <button key={hint} type="button" className="chat-hint" onClick={() => send(hint)} disabled={busy}>
                 {hint}
@@ -79,7 +79,7 @@ export default function Assistant() {
             {m.content}
           </p>
         ))}
-        {busy && <p className="bubble assistant typing">Валли думает…</p>}
+        {busy && <p className="bubble assistant typing">WALL·E is thinking…</p>}
         {error && (
           <p className="error" role="alert">
             {error}
@@ -90,18 +90,18 @@ export default function Assistant() {
 
       <form className="chat-form" onSubmit={submit}>
         <label className="sr-only" htmlFor="chat-input">
-          Сообщение
+          Message
         </label>
         <input
           id="chat-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Напишите вопрос…"
+          placeholder="Type your question…"
           maxLength={2000}
           autoComplete="off"
         />
         <button className="primary" type="submit" disabled={busy || !text.trim()}>
-          Отправить
+          Send
         </button>
       </form>
     </section>

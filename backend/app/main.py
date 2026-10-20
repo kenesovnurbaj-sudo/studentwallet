@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, SessionLocal, engine
 from .routers import admin, assistant, auth, budgets, categories, expenses, imports
-from .migrations import move_people_to_transfers
+from .migrations import move_people_to_transfers, rename_default_categories_to_english
 from .seed import seed
 
 
@@ -14,6 +14,7 @@ from .seed import seed
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
+        rename_default_categories_to_english(db)
         seed(db)
         move_people_to_transfers(db)
     yield

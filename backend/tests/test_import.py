@@ -31,11 +31,11 @@ def test_parse_rows():
 
 
 def test_guess_category():
-    assert guess_category("Magnum Cash&Carry") == "Еда"
-    assert guess_category("YANDEX.GO") == "Транспорт"
-    assert guess_category("DIGITALOCEAN.COM") == "Подписки"
-    assert guess_category("Курсы cumin") == "Другое"  # «cu» внутри слова не считается
-    assert guess_category("ИП Неизвестный") == "Другое"
+    assert guess_category("Magnum Cash&Carry") == "Food"
+    assert guess_category("YANDEX.GO") == "Transport"
+    assert guess_category("DIGITALOCEAN.COM") == "Subscriptions"
+    assert guess_category("Курсы cumin") == "Other"  # «cu» внутри слова не считается
+    assert guess_category("ИП Неизвестный") == "Other"
 
 
 def test_preview_and_commit_with_duplicates(client, auth_headers, monkeypatch):
@@ -93,9 +93,9 @@ def test_manual_entry_is_flagged(client, auth_headers, monkeypatch):
 
 
 def test_person_transfers_go_to_transfers_category():
-    assert guess_category("Сара Т.", "Transfers", "expense") == "Переводы"
-    assert guess_category("From card of other banks", "Replenishment", "income") == "Другое"
-    assert guess_category("Magnum Cash&Carry", "Purchases", "expense") == "Еда"
+    assert guess_category("Сара Т.", "Transfers", "expense") == "Transfers"
+    assert guess_category("From card of other banks", "Replenishment", "income") == "Other"
+    assert guess_category("Magnum Cash&Carry", "Purchases", "expense") == "Food"
 
 
 def test_remembers_user_category_for_merchant(client, auth_headers, monkeypatch):
@@ -107,18 +107,18 @@ def test_remembers_user_category_for_merchant(client, auth_headers, monkeypatch)
 
     rows = preview()
     dante = next(r for r in rows if r["note"] == "ИП DANTE")
-    assert dante["category_id"] == cats["Другое"]
-    assert next(r for r in rows if r["note"] == "Сара Т.")["category_id"] == cats["Переводы"]
+    assert dante["category_id"] == cats["Other"]
+    assert next(r for r in rows if r["note"] == "Сара Т.")["category_id"] == cats["Transfers"]
 
     # пользователь исправил категорию и импортировал
-    payload = {"rows": [{k: dante[k] for k in ("date", "amount", "type", "note")} | {"category_id": cats["Еда"]}]}
+    payload = {"rows": [{k: dante[k] for k in ("date", "amount", "type", "note")} | {"category_id": cats["Food"]}]}
     assert client.post("/api/import/commit", headers=auth_headers, json=payload).status_code == 200
 
     # при следующей загрузке выбор подставляется сам, у другого пользователя он не появляется
-    assert next(r for r in preview() if r["note"] == "ИП DANTE")["category_id"] == cats["Еда"]
+    assert next(r for r in preview() if r["note"] == "ИП DANTE")["category_id"] == cats["Food"]
     other = register_and_login(client, "other2@example.com")
     r2 = client.post("/api/import/kaspi", headers=other, files={"file": ("s.pdf", b"x")}).json()["rows"]
-    assert next(r for r in r2 if r["note"] == "ИП DANTE")["category_id"] == cats["Другое"]
+    assert next(r for r in r2 if r["note"] == "ИП DANTE")["category_id"] == cats["Other"]
 
 
 def test_person_detected_by_name_and_initial():
@@ -129,8 +129,8 @@ def test_person_detected_by_name_and_initial():
     for note in ("ИП DANTE", "MIRAS STORE", "Magnum Cash&Carry", "iU Market Байзакова", "ТОО Tumar-life clinic", "Pay for Kaspi Credit"):
         assert not is_person(note), note
     # пополнение от человека тоже «Переводы», даже если банк назвал его не переводом
-    assert guess_category("Айдар С.", "Replenishment", "income") == "Переводы"
-    assert guess_category("Айдар С.", "Purchases", "expense") == "Переводы"
+    assert guess_category("Айдар С.", "Replenishment", "income") == "Transfers"
+    assert guess_category("Айдар С.", "Purchases", "expense") == "Transfers"
 
 
 def test_migration_moves_existing_people_to_transfers(db_session):
@@ -150,19 +150,19 @@ def test_migration_moves_existing_people_to_transfers(db_session):
         db_session.commit()
         return e
 
-    person, old_income, shop = add("Сара Т.", "Другое"), add("Айдар С.", "Еда"), add("ИП DANTE", "Другое")
+    person, old_income, shop = add("Сара Т.", "Other"), add("Айдар С.", "Food"), add("ИП DANTE", "Other")
 
     assert move_people_to_transfers(db_session) == 2
     db_session.refresh(person), db_session.refresh(old_income), db_session.refresh(shop)
-    assert person.category_id == old_income.category_id == cats["Переводы"]
-    assert shop.category_id == cats["Другое"]
+    assert person.category_id == old_income.category_id == cats["Transfers"]
+    assert shop.category_id == cats["Other"]
 
     # Разовая миграция: ручное исправление после неё не откатывается
-    person.category_id = cats["Еда"]
+    person.category_id = cats["Food"]
     db_session.commit()
     assert move_people_to_transfers(db_session) == 0
     db_session.refresh(person)
-    assert person.category_id == cats["Еда"]
+    assert person.category_id == cats["Food"]
 
 
 def test_person_ignores_remembered_category(client, auth_headers, monkeypatch):
@@ -170,7 +170,20 @@ def test_person_ignores_remembered_category(client, auth_headers, monkeypatch):
 
     monkeypatch.setattr(imports, "extract_pdf_text", lambda data: SAMPLE)
     cats = {c["name"]: c["id"] for c in client.get("/api/categories", headers=auth_headers).json()}
-    row = {"date": "2026-10-18", "amount": 680, "type": "expense", "note": "Сара Т.", "category_id": cats["Еда"]}
+    row = {"date": "2026-10-18", "amount": 680, "type": "expense", "note": "Сара Т.", "category_id": cats["Food"]}
     client.post("/api/import/commit", headers=auth_headers, json={"rows": [row]})
     rows = client.post("/api/import/kaspi", headers=auth_headers, files={"file": ("s.pdf", b"x")}).json()["rows"]
-    assert next(r for r in rows if r["note"] == "Сара Т.")["category_id"] == cats["Переводы"]
+    assert next(r for r in rows if r["note"] == "Сара Т.")["category_id"] == cats["Transfers"]
+
+
+def test_default_categories_renamed_in_place(db_session):
+    from app.migrations import rename_default_categories_to_english
+    from app.models import Category
+
+    food = db_session.query(Category).filter_by(name="Food", user_id=None).one()
+    food.name = "Еда"  # имитируем старую базу
+    db_session.commit()
+    assert rename_default_categories_to_english(db_session) == 1
+    db_session.refresh(food)
+    assert food.name == "Food"  # тот же id, записи не потеряли категорию
+    assert db_session.query(Category).filter_by(name="Еда").count() == 0

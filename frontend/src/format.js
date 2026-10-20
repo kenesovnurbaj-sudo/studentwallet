@@ -1,6 +1,6 @@
-const number = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 })
+const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
 
-export const money = (value) => `${number.format(value)} ₸`
+export const money = (value) => `₸${number.format(value)}`
 
 // Сегодняшняя дата в формате ГГГГ-ММ-ДД по местному времени
 export const todayISO = () => new Date().toLocaleDateString('en-CA')
@@ -9,17 +9,10 @@ export const todayISO = () => new Date().toLocaleDateString('en-CA')
 export const monthISO = () => todayISO().slice(0, 7)
 
 export const shortDate = (iso) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 export const monthTitle = (iso) =>
-  new Date(`${iso}-01T00:00:00`).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  new Date(`${iso}-01T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-// 1 день, 2 дня, 5 дней
-export function daysWord(n) {
-  const last = n % 10
-  const lastTwo = n % 100
-  if (lastTwo >= 11 && lastTwo <= 14) return 'дней'
-  if (last === 1) return 'день'
-  if (last >= 2 && last <= 4) return 'дня'
-  return 'дней'
-}
+// 1 day, 2 days
+export const daysWord = (n) => (n === 1 ? 'day' : 'days')

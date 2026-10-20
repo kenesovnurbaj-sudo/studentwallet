@@ -25,7 +25,7 @@ export default function ImportStatement({ categories, onImported, onClose }) {
     setBusy(true)
     try {
       const data = await api.importKaspi(file)
-      // Не импортируем по умолчанию: уже загруженные, внесённые вручную и переводы между своими счетами
+      // Не импортируем по умолчанию: уже загруженные, внесённые вручную и переводы between your accounts
       setRows(data.rows.map((r) => ({ ...r, on: !r.duplicate && !r.own_account && !r.manual_match })))
     } catch (err) {
       setError(err.message)
@@ -37,7 +37,7 @@ export default function ImportStatement({ categories, onImported, onClose }) {
   const update = (i, patch) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   const selected = rows ? rows.filter((r) => r.on) : []
   const setAll = (on) => setRows(rows.map((r) => ({ ...r, on })))
-  // Как при загрузке файла: без уже загруженных, внесённых вручную и переводов между своими счетами
+  // Как при загрузке файла: без уже загруженных, внесённых вручную и переводов between your accounts
   const onlyNew = () => setRows(rows.map((r) => ({ ...r, on: !r.duplicate && !r.own_account && !r.manual_match })))
 
   async function confirm() {
@@ -47,7 +47,7 @@ export default function ImportStatement({ categories, onImported, onClose }) {
       const { imported, skipped_duplicates } = await api.importCommit(
         selected.map(({ date, amount, type, note, category_id }) => ({ date, amount, type, note, category_id })),
       )
-      setResult(`Добавлено операций: ${imported}${skipped_duplicates ? `, пропущено дубликатов: ${skipped_duplicates}` : ''}`)
+      setResult(`Added ${imported} transactions${skipped_duplicates ? `, skipped ${skipped_duplicates} duplicates` : ''}`)
       setRows(null)
       onImported()
     } catch (err) {
@@ -61,17 +61,17 @@ export default function ImportStatement({ categories, onImported, onClose }) {
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
     <section className="modal" role="dialog" aria-modal="true" aria-labelledby="import-title">
       <header className="modal-head">
-        <h2 id="import-title">Импорт выписки Kaspi</h2>
-        <button type="button" className="modal-close" onClick={onClose} disabled={busy} aria-label="Закрыть">
+        <h2 id="import-title">Import Kaspi statement</h2>
+        <button type="button" className="modal-close" onClick={onClose} disabled={busy} aria-label="Close">
           ×
         </button>
       </header>
-      <p className="hint">Загрузите PDF-выписку Kaspi Gold на английском: Kaspi.kz → Gold → Выписка. Перед сохранением вы увидите список и сможете поправить категории. Уже загруженное повторно не добавится.</p>
+      <p className="hint">Upload a Kaspi Gold PDF statement in English (Kaspi.kz → Gold → Statement). You will see the list before saving and can adjust categories. Anything imported earlier will not be added again.</p>
 
       <input ref={fileRef} type="file" accept="application/pdf,.pdf" onChange={pick} hidden />
       {!rows && (
         <button className="primary" type="button" disabled={busy} onClick={() => fileRef.current.click()}>
-          {busy ? 'Читаем файл…' : 'Выбрать PDF'}
+          {busy ? 'Reading file…' : 'Choose PDF'}
         </button>
       )}
 
@@ -86,44 +86,44 @@ export default function ImportStatement({ categories, onImported, onClose }) {
         <>
           <div className="import-select">
             <button className="secondary" type="button" onClick={() => setAll(true)} disabled={busy}>
-              Выбрать все
+              Select all
             </button>
             <button className="secondary" type="button" onClick={() => setAll(false)} disabled={busy}>
-              Снять все
+              Clear all
             </button>
             <button className="secondary" type="button" onClick={onlyNew} disabled={busy}>
-              Только новые
+              New only
             </button>
             <span className="hint">
-              Выбрано {selected.length} из {rows.length}
+              Selected {selected.length} of {rows.length}
             </span>
           </div>
           <div className="import-scroll">
             <table className="import-table">
               <thead>
                 <tr>
-                  <th aria-label="Импортировать" />
-                  <th>Дата</th>
-                  <th>Описание</th>
-                  <th>Категория</th>
-                  <th className="num">Сумма</th>
+                  <th aria-label="Import" />
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th className="num">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i} className={r.on ? '' : 'off'}>
                     <td>
-                      <input type="checkbox" checked={r.on} onChange={(e) => update(i, { on: e.target.checked })} aria-label={`Импортировать: ${r.note}`} />
+                      <input type="checkbox" checked={r.on} onChange={(e) => update(i, { on: e.target.checked })} aria-label={`Import: ${r.note}`} />
                     </td>
                     <td>{shortDate(r.date)}</td>
                     <td>
                       {r.note}
-                      {r.duplicate && <span className="tag">уже загружено</span>}
-                      {r.manual_match && <span className="tag">возможно, уже внесено вручную</span>}
-                      {r.own_account && <span className="tag">между своими счетами</span>}
+                      {r.duplicate && <span className="tag">already imported</span>}
+                      {r.manual_match && <span className="tag">possibly added manually</span>}
+                      {r.own_account && <span className="tag">between your accounts</span>}
                     </td>
                     <td>
-                      <select value={r.category_id} onChange={(e) => update(i, { category_id: Number(e.target.value) })} aria-label="Категория">
+                      <select value={r.category_id} onChange={(e) => update(i, { category_id: Number(e.target.value) })} aria-label="Category">
                         {categories.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.icon} {c.name}
@@ -142,10 +142,10 @@ export default function ImportStatement({ categories, onImported, onClose }) {
           </div>
           <div className="import-actions">
             <button className="primary" type="button" disabled={busy || selected.length === 0} onClick={confirm}>
-              {busy ? 'Сохраняем…' : `Импортировать (${selected.length})`}
+              {busy ? 'Saving…' : `Import (${selected.length})`}
             </button>
             <button className="link" type="button" disabled={busy} onClick={() => setRows(null)}>
-              Отмена
+              Cancel
             </button>
           </div>
         </>

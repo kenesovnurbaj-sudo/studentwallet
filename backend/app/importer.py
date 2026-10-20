@@ -21,14 +21,14 @@ ROW_RE = re.compile(
 
 # (категория, ключевые слова). Ищем по целым словам без учёта регистра, побеждает первое совпадение.
 CATEGORY_RULES = [
-    ("Развлечения", ["pixel cyberlounge", "kinoforum", "кино", "cinema"]),
-    ("Транспорт", ["yandex.go", "yandex go", "onay", "taxi", "такси", "indriver"]),
-    ("Подписки", ["yandex.plus", "digitalocean", "netflix", "spotify", "beeline", "kcell", "tele2", "altel"]),
-    ("Еда", ["magnum", "cu", "iu market", "supersushi", "cafe", "mangal", "донер", "хинкали", "гастромир", "бравый",
+    ("Entertainment", ["pixel cyberlounge", "kinoforum", "кино", "cinema"]),
+    ("Transport", ["yandex.go", "yandex go", "onay", "taxi", "такси", "indriver"]),
+    ("Subscriptions", ["yandex.plus", "digitalocean", "netflix", "spotify", "beeline", "kcell", "tele2", "altel"]),
+    ("Food", ["magnum", "cu", "iu market", "supersushi", "cafe", "mangal", "донер", "хинкали", "гастромир", "бравый",
              "zero arbat", "small", "kfc", "burger", "pizza", "sushi", "coffee", "кофе", "market", "маркет"]),
-    ("Учёба", ["university", "университет", "колледж", "книг", "kitap"]),
+    ("Education", ["university", "университет", "колледж", "книг", "kitap"]),
 ]
-FALLBACK_CATEGORY = "Другое"
+FALLBACK_CATEGORY = "Other"
 
 
 @dataclass
@@ -53,7 +53,7 @@ def is_person(note: str) -> bool:
 def guess_category(note: str, kind: str = "", type_: str = "expense") -> str:
     """Категория по ключевым словам. Переводы людям и пополнения от людей идут в «Переводы»."""
     if is_person(note) or (kind == "Transfers" and type_ == "expense"):
-        return "Переводы"
+        return "Transfers"
     text = note.lower()
     for category, words in CATEGORY_RULES:
         for word in words:

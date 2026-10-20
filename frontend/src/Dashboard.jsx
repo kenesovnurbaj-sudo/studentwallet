@@ -55,11 +55,11 @@ export default function Dashboard({ user, onLogout }) {
         <span className="wordmark small">StudentWallet</span>
         <span className="who">
           <button className="secondary" type="button" onClick={() => setImportOpen(true)}>
-            Импорт выписки
+            Import statement
           </button>
           {user.full_name || user.email}
           <button className="link" type="button" onClick={onLogout}>
-            Выйти
+            Log out
           </button>
         </span>
       </header>

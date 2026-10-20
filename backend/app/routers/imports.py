@@ -149,7 +149,7 @@ def remember_choices(db: Session, user: User, rows: list) -> None:
         rule = saved.get(key)
         if rule is not None:
             rule.category_id = row.category_id
-        elif row.category_id != auto_id and row.category_id != globals_by_name.get("Переводы"):
+        elif row.category_id != auto_id and row.category_id != globals_by_name.get("Transfers"):
             rule = MerchantRule(user_id=user.id, note=key, category_id=row.category_id)
             db.add(rule)
             saved[key] = rule

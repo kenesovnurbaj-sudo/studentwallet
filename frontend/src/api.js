@@ -19,23 +19,23 @@ export class ApiError extends Error {
 }
 
 const KNOWN_ERRORS = {
-  'Invalid email or password': 'Неверный email или пароль',
-  'Email already registered': 'Этот email уже зарегистрирован. Попробуйте войти',
-  'User is blocked': 'Аккаунт заблокирован администратором',
-  'Unknown category': 'Выбрана неизвестная категория',
-  'Not authenticated': 'Войдите в аккаунт',
-  'Invalid or expired token': 'Сессия закончилась. Войдите снова',
-  'Could not read statement': 'Не удалось прочитать выписку. Нужен PDF Kaspi Gold на английском языке',
-  'File too large': 'Файл слишком большой (максимум 5 МБ)',
-  'AI unavailable': 'Валли сейчас недоступен. Попробуйте позже',
+  'Invalid email or password': 'Wrong email or password',
+  'Email already registered': 'This email is already registered. Try logging in',
+  'User is blocked': 'Your account was blocked by an administrator',
+  'Unknown category': 'Unknown category selected',
+  'Not authenticated': 'Please log in',
+  'Invalid or expired token': 'Your session has expired. Please log in again',
+  'Could not read statement': 'Could not read the statement. A Kaspi Gold PDF in English is required',
+  'File too large': 'File is too large (5 MB max)',
+  'AI unavailable': 'WALL·E is unavailable right now. Please try again later',
 }
 
 function errorText(data, status) {
-  if (status === 422) return 'Проверьте поля: пароль не короче 8 символов, сумма больше нуля'
+  if (status === 422) return 'Check the fields: password must be at least 8 characters, amount must be greater than zero'
   const detail = data && data.detail
   if (typeof detail === 'string') return KNOWN_ERRORS[detail] || detail
-  if (status >= 500) return 'Ошибка сервера. Попробуйте ещё раз'
-  return 'Не удалось выполнить запрос'
+  if (status >= 500) return 'Server error. Please try again'
+  return 'The request failed'
 }
 
 async function request(path, { method = 'GET', body, auth = true } = {}) {
@@ -53,7 +53,7 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     })
   } catch {
-    throw new ApiError(0, 'Нет связи с сервером. Проверьте, что backend запущен')
+    throw new ApiError(0, 'Cannot reach the server. Check that the backend is running')
   }
 
   if (res.status === 204) return null

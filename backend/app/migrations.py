@@ -6,12 +6,37 @@ from .models import AppMeta, Category, Expense, MerchantRule
 
 PEOPLE_TO_TRANSFERS = "people_to_transfers_v1"
 
+# Старые русские названия стандартных категорий -> английские
+CATEGORY_RENAMES = {
+    "Еда": "Food",
+    "Транспорт": "Transport",
+    "Учёба": "Education",
+    "Развлечения": "Entertainment",
+    "Подписки": "Subscriptions",
+    "Переводы": "Transfers",
+    "Другое": "Other",
+}
+
+
+def rename_default_categories_to_english(db: Session) -> int:
+    """Переименовывает глобальные категории на месте, чтобы у существующих записей категория сохранилась.
+    Вызывать до seed(): иначе seed создаст английские дубликаты рядом с русскими."""
+    existing = {c.name: c for c in db.query(Category).filter(Category.user_id.is_(None))}
+    changed = 0
+    for old, new in CATEGORY_RENAMES.items():
+        if old in existing and new not in existing:
+            existing[old].name = new
+            changed += 1
+    if changed:
+        db.commit()
+    return changed
+
 
 def move_people_to_transfers(db: Session) -> int:
     """Все записи с описанием «Имя Ф.» переносит в категорию «Переводы» (старые тоже). Возвращает число изменённых."""
     if db.get(AppMeta, PEOPLE_TO_TRANSFERS) is not None:
         return 0
-    transfers = db.query(Category).filter(Category.user_id.is_(None), Category.name == "Переводы").first()
+    transfers = db.query(Category).filter(Category.user_id.is_(None), Category.name == "Transfers").first()
     if transfers is None:
         return 0  # категории ещё нет, попробуем при следующем запуске
 
