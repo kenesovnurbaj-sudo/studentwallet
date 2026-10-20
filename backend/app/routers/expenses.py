@@ -6,8 +6,20 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_current_user, visible_category
-from ..models import Expense, User
-from ..schemas import BulkCategoryChange, BulkCategoryResult, ExpenseCreate, ExpenseOut, ExpenseUpdate
+from ..models import Category, Expense, ExpenseShare, User
+from ..people import display_name, find_users_by_email
+from ..schemas import (
+    BulkCategoryChange,
+    BulkCategoryResult,
+    ExpenseCreate,
+    ExpenseOut,
+    ExpenseUpdate,
+    SplitIn,
+    SplitLine,
+    SplitPreviewIn,
+    SplitPreviewOut,
+)
+from ..splitting import SplitError, SplitResult, compute_split, from_cents, to_cents
 from .imports import remember_choices
 
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
@@ -20,6 +32,43 @@ def _get_own_expense(db: Session, user: User, expense_id: int) -> Expense:
     if expense.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not your expense")
     return expense
+
+
+def _compute(user: User, amount: float | None, split: SplitIn) -> SplitResult:
+    friends = [(p.email, to_cents(p.amount) if p.amount is not None else None) for p in split.participants]
+    items = [(to_cents(i.price), i.eaters) for i in split.items]
+    try:
+        return compute_split(
+            split.mode,
+            to_cents(amount) if amount is not None else None,
+            friends,
+            items,
+            split.tip_percent,
+            payer_email=user.email,
+        )
+    except SplitError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/split-preview", response_model=SplitPreviewOut)
+def split_preview(
+    data: SplitPreviewIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Показывает, кто сколько должен, ничего не сохраняя. Сайт вызывает его, пока вы заполняете форму."""
+    result = _compute(user, data.amount, data.split)
+    found = find_users_by_email(db, result.friends.keys())
+    lines = [
+        SplitLine(
+            email=email,
+            name=display_name(found[email]) if email in found else email,
+            amount=from_cents(cents),
+            found=email in found,
+        )
+        for email, cents in result.friends.items()
+    ]
+    return SplitPreviewOut(total=from_cents(result.total), service=from_cents(result.service), my_share=from_cents(result.mine), lines=lines)
 
 
 @router.get("", response_model=list[ExpenseOut])
@@ -47,8 +96,55 @@ def create_expense(
     db: Session = Depends(get_db),
 ):
     visible_category(db, user, data.category_id)
-    expense = Expense(user_id=user.id, **data.model_dump())
+
+    if data.split is None:
+        expense = Expense(
+            user_id=user.id,
+            category_id=data.category_id,
+            amount=data.amount,
+            type=data.type,
+            note=data.note,
+            spent_at=data.spent_at,
+            source=data.source,
+        )
+        db.add(expense)
+        db.commit()
+        db.refresh(expense)
+        return expense
+
+    # Вы заплатили за друзей: ваша доля идёт в ваши расходы, доли друзей становятся их долгами вам.
+    if data.type != "expense":
+        raise HTTPException(status_code=400, detail="Делить можно только расходы")
+    result = _compute(user, data.amount, data.split)
+    friends = find_users_by_email(db, result.friends.keys())
+    missing = [email for email in result.friends if email not in friends]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Не найдены на сайте: {', '.join(missing)}. Попросите друзей зарегистрироваться",
+        )
+
+    expense = Expense(
+        user_id=user.id,
+        category_id=data.category_id,
+        amount=from_cents(result.mine),
+        paid_total=from_cents(result.total),
+        type="expense",
+        note=data.note,
+        spent_at=data.spent_at,
+        source=data.source,
+    )
     db.add(expense)
+    db.flush()  # нужен id траты для долгов
+    for email, cents in result.friends.items():
+        db.add(
+            ExpenseShare(
+                expense_id=expense.id,
+                payer_id=user.id,
+                debtor_id=friends[email].id,
+                amount=from_cents(cents),
+            )
+        )
     db.commit()
     db.refresh(expense)
     return expense
@@ -86,6 +182,15 @@ def update_expense(
 ):
     expense = _get_own_expense(db, user, expense_id)
     changes = data.model_dump(exclude_unset=True)
+    if expense.shares:
+        # Сумма и тип связаны с долгами друзей, поэтому у разделённой траты их менять нельзя.
+        amount_changed = changes.get("amount") is not None and abs(float(expense.amount) - float(changes["amount"])) > 0.005
+        type_changed = changes.get("type") is not None and changes["type"] != expense.type
+        if amount_changed or type_changed:
+            raise HTTPException(
+                status_code=409,
+                detail="Сумму разделённой траты менять нельзя. Удалите её и создайте заново",
+            )
     if "category_id" in changes and changes["category_id"] is not None:
         visible_category(db, user, changes["category_id"])
     for field, value in changes.items():
@@ -103,5 +208,10 @@ def delete_expense(
     db: Session = Depends(get_db),
 ):
     expense = _get_own_expense(db, user, expense_id)
+    if any(share.status != "pending" for share in expense.shares):
+        raise HTTPException(
+            status_code=409,
+            detail="Эту трату нельзя удалить: по ней друзья уже отметили или вернули деньги",
+        )
     db.delete(expense)
     db.commit()

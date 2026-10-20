@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { api } from './api.js'
 import { money, shortDate } from './format.js'
 
-export default function ExpenseList({ expenses, categories, filter, onFilter, onChanged }) {
+export default function ExpenseList({ expenses, categories, filter, onFilter, onChanged, onEdit, editingId }) {
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [selecting, setSelecting] = useState(false)
@@ -17,7 +17,7 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
     setError('')
     try {
       await api.deleteExpense(item.id)
-      onChanged()
+      onChanged(item.id)
     } catch (err) {
       setError(err.message)
     }
@@ -132,8 +132,9 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
           {shown.map((item) => {
             const cat = byId[item.category_id]
             const income = item.type === 'income'
+            const title = item.note || (cat ? cat.name : 'Без названия')
             return (
-              <li key={item.id} className="row-item">
+              <li key={item.id} className={`row-item ${editingId === item.id ? 'is-editing' : ''}`}>
                 {selecting && (
                   <input
                     type="checkbox"
@@ -146,10 +147,11 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
                   {cat ? cat.icon : '🧾'}
                 </span>
                 <span className="row-main">
-                  <span className="row-title">{item.note || (cat ? cat.name : 'Untitled')}</span>
+                  <span className="row-title">{title}</span>
                   <span className="row-sub">
                     {cat ? cat.name : 'No category'}, {shortDate(item.spent_at)}
                     {item.source === 'siri' ? ', via Siri' : ''}
+                    {item.paid_total != null ? `, your share of the ${money(item.paid_total)} bill` : ''}
                   </span>
                 </span>
                 <span className={`row-amount ${income ? 'plus' : ''}`}>
@@ -159,8 +161,18 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
                 <button
                   className="icon-btn"
                   type="button"
+                  onClick={() => onEdit(item)}
+                  aria-label={`Изменить запись «${title}»`}
+                  title="Изменить"
+                >
+                  ✎
+                </button>
+                <button
+                  className="icon-btn"
+                  type="button"
                   onClick={() => remove(item)}
-                  aria-label={`Delete entry for ${money(item.amount)}`}
+                  aria-label={`Delete entry “${title}”`}
+                  title="Delete"
                 >
                   ×
                 </button>

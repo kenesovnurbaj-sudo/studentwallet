@@ -1,8 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from .clock import today
 from .security import BCRYPT_MAX_BYTES, password_too_long
@@ -99,18 +99,74 @@ class CategoryOut(BaseModel):
     user_id: int | None
 
 
+class SplitItem(BaseModel):
+    """Позиция из чека: что заказали, сколько стоит и кто это ел."""
+
+    name: str = Field(default="", max_length=80)
+    price: float = Field(gt=0)
+    eaters: list[str] = Field(min_length=1, max_length=21)  # "me" или email друга
+
+
+class SplitParticipant(BaseModel):
+    email: EmailStr
+    amount: float | None = Field(default=None, gt=0)  # нужна только в режиме custom
+
+
+class SplitIn(BaseModel):
+    mode: Literal["equal", "custom", "items"]
+    participants: list[SplitParticipant] = Field(min_length=1, max_length=20)  # только друзья
+    items: list[SplitItem] = Field(default_factory=list, max_length=50)
+    tip_percent: float = Field(default=0, ge=0, le=100)  # обслуживание, % к чеку
+
+
+def _amount_required(amount: float | None, split: "SplitIn | None") -> None:
+    # В режиме «по блюдам» сумма считается из позиций, в остальных случаях она обязательна.
+    if amount is None and (split is None or split.mode != "items"):
+        raise ValueError("amount is required")
+
+
 class ExpenseCreate(BaseModel):
-    amount: Money
+    amount: Money | None = None  # при делении счёта это весь чек
     category_id: int
     type: Literal["expense", "income"] = "expense"
     note: str = Field(default="", max_length=255)
     spent_at: date = Field(default_factory=today)
     source: Literal["web", "siri"] = "web"
+    split: SplitIn | None = None  # если указано, вы заплатили за друзей
 
     @field_validator("spent_at")
     @classmethod
     def date_not_in_future(cls, value: date | None) -> date | None:
         return _not_in_future(value)
+
+    @model_validator(mode="after")
+    def _check_amount(self):
+        _amount_required(self.amount, self.split)
+        return self
+
+
+class SplitPreviewIn(BaseModel):
+    amount: float | None = Field(default=None, gt=0)
+    split: SplitIn
+
+    @model_validator(mode="after")
+    def _check_amount(self):
+        _amount_required(self.amount, self.split)
+        return self
+
+
+class SplitLine(BaseModel):
+    email: str
+    name: str
+    amount: float
+    found: bool  # есть ли друг среди пользователей сайта
+
+
+class SplitPreviewOut(BaseModel):
+    total: float
+    service: float = 0  # сколько из total составляет обслуживание
+    my_share: float
+    lines: list[SplitLine]
 
 
 class ExpenseUpdate(BaseModel):
@@ -145,6 +201,37 @@ class ExpenseOut(BaseModel):
     note: str
     spent_at: date
     source: str
+    paid_total: float | None = None  # весь чек, если вы платили за друзей (amount тогда ваша доля)
+
+
+class UserBrief(BaseModel):
+    id: int
+    name: str
+    email: str
+
+
+class ShareOut(BaseModel):
+    id: int
+    amount: float
+    status: Literal["pending", "marked_paid", "settled"]
+    note: str  # описание траты
+    spent_at: date  # дата траты
+    paid_total: float | None
+    payer: UserBrief
+    debtor: UserBrief
+    created_at: datetime
+    marked_at: datetime | None
+    settled_at: datetime | None
+
+
+class MarkPaidIn(BaseModel):
+    category_id: int  # в какую категорию записать этот расход в вашем бюджете
+
+
+class DebtSummary(BaseModel):
+    owed_to_me: float  # сколько друзья ещё должны вам
+    i_owe: float  # сколько должны вы
+    to_confirm: int  # сколько возвратов ждут вашего подтверждения
 
 
 class BudgetSet(BaseModel):

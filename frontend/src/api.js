@@ -33,7 +33,7 @@ const KNOWN_ERRORS = {
 }
 
 function errorText(data, status) {
-  if (status === 422) return 'Check the fields: password must be at least 8 characters, amount must be greater than zero'
+  if (status === 422) return 'Check the fields: amount must be greater than zero, the email must be valid, the password at least 8 characters'
   const detail = data && data.detail
   if (typeof detail === 'string') return KNOWN_ERRORS[detail] || detail
   if (status >= 500) return 'Server error. Please try again'
@@ -84,6 +84,8 @@ export const api = {
   addExpense: (data) => request('/expenses', { method: 'POST', body: data }),
   bulkCategory: (ids, categoryId) =>
     request('/expenses/bulk-category', { method: 'POST', body: { ids, category_id: categoryId } }),
+  updateExpense: (id, data) => request(`/expenses/${id}`, { method: 'PUT', body: data }),
+  addCategory: (data) => request('/categories', { method: 'POST', body: data }),
   deleteExpense: (id) => request(`/expenses/${id}`, { method: 'DELETE' }),
   setBudget: (data) => request('/budgets', { method: 'PUT', body: data }),
   budgetSplit: (month) => request(`/ai/budget-split?month=${encodeURIComponent(month)}`),
@@ -99,4 +101,12 @@ export const api = {
   categoryBalances: (month) => request(`/budget/categories?month=${encodeURIComponent(month)}`),
   forecast: (month) => request(`/budget/forecast?month=${encodeURIComponent(month)}`),
   summary: (month) => request(`/budget/summary?month=${encodeURIComponent(month)}`),
+  // Делёжка счёта и долги
+  splitPreview: (data) => request('/expenses/split-preview', { method: 'POST', body: data }),
+  debtsOwedToMe: () => request('/debts/owed-to-me'),
+  debtsIOwe: () => request('/debts/i-owe'),
+  markPaid: (shareId, categoryId) =>
+    request(`/shares/${shareId}/mark-paid`, { method: 'POST', body: { category_id: categoryId } }),
+  confirmShare: (shareId) => request(`/shares/${shareId}/confirm`, { method: 'POST' }),
+  rejectShare: (shareId) => request(`/shares/${shareId}/reject`, { method: 'POST' }),
 }
