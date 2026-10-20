@@ -6,6 +6,7 @@ import ExpenseForm from './ExpenseForm.jsx'
 import ExpenseList from './ExpenseList.jsx'
 import ImportStatement from './ImportStatement.jsx'
 import BudgetSplit from './BudgetSplit.jsx'
+import ForecastCard from './ForecastCard.jsx'
 import Assistant from './Assistant.jsx'
 
 export default function Dashboard({ user, onLogout }) {
@@ -73,6 +74,7 @@ export default function Dashboard({ user, onLogout }) {
           </p>
         )}
         <Hero summary={summary} month={month} onSaved={loadSummary} />
+        {summary && <ForecastCard month={month} refreshKey={summary} />}
         {summary && (
           <p className="split-row">
             <button className="secondary" type="button" onClick={() => setSplitOpen(true)}>

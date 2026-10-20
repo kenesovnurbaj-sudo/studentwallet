@@ -841,3 +841,60 @@ button:disabled {
   border-radius: 8px;
   text-align: right;
 }
+
+/* Прогноз и предупреждения */
+.forecast {
+  margin-top: 16px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--ok);
+  border-radius: 12px;
+}
+
+.forecast h2 {
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+}
+
+.forecast-watch {
+  border-left-color: var(--warn);
+}
+
+.forecast-danger,
+.forecast-exceeded {
+  border-left-color: var(--bad);
+}
+
+.forecast-info {
+  border-left-color: var(--line);
+}
+
+.forecast-msg + .forecast-msg {
+  margin-top: 4px;
+}
+
+.forecast-msg.danger,
+.forecast-msg.exceeded {
+  color: var(--error-text);
+  font-weight: 600;
+}
+
+.forecast-meter {
+  margin: 12px 0 8px;
+  background: var(--line);
+}
+
+.forecast-facts {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.forecast-watch .meter-fill {
+  background: var(--warn);
+}
+
+.forecast-danger .meter-fill,
+.forecast-exceeded .meter-fill {
+  background: var(--bad);
+}

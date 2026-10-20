@@ -9,7 +9,8 @@ from ..database import get_db
 from ..deps import get_current_user
 from ..models import Budget, Expense, User
 from ..models import Category
-from ..schemas import BudgetOut, BudgetSet, BudgetSplitSaved, BudgetSplitSet, BudgetSummary
+from ..forecast import build_forecast
+from ..schemas import BudgetOut, ForecastOut, BudgetSet, BudgetSplitSaved, BudgetSplitSet, BudgetSummary
 
 router = APIRouter(prefix="/api", tags=["budgets"])
 
@@ -138,3 +139,14 @@ def budget_summary(
         days_left=days_left,
         daily_limit=round(daily_limit, 2),
     )
+
+
+@router.get("/budget/forecast", response_model=ForecastOut)
+def budget_forecast(
+    month: str = Query(default_factory=_current_month, pattern=MONTH_PATTERN),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Прогноз расходов до конца месяца и предупреждения о слишком быстрых тратах."""
+    summary = budget_summary(month=month, user=user, db=db)  # 404, если бюджет на месяц не задан
+    return build_forecast(month, summary.limit, summary.spent, date.today())

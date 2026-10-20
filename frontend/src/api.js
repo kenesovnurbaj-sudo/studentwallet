@@ -96,5 +96,6 @@ export const api = {
   },
   importCommit: (rows) => request('/import/commit', { method: 'POST', body: { rows } }),
   chat: (messages) => request('/assistant/chat', { method: 'POST', body: { messages } }),
+  forecast: (month) => request(`/budget/forecast?month=${encodeURIComponent(month)}`),
   summary: (month) => request(`/budget/summary?month=${encodeURIComponent(month)}`),
 }

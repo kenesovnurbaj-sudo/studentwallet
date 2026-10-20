@@ -117,3 +117,24 @@ class BudgetSummary(BaseModel):
     percent_used: float
     days_left: int
     daily_limit: float
+
+
+class AlertOut(BaseModel):
+    code: str
+    level: str
+    message: str
+
+
+class ForecastOut(BaseModel):
+    month: str
+    limit: float
+    spent: float
+    days_in_month: int
+    days_elapsed: int
+    daily_average: float | None
+    projected_total: float | None
+    run_out_date: date | None
+    days_early: int | None
+    safe_daily_limit: float | None
+    level: str
+    alerts: list[AlertOut]
