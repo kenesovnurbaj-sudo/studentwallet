@@ -1,5 +1,4 @@
-from datetime import date
-
+from app.clock import current_month
 from tests.conftest import register_and_login
 
 
@@ -104,7 +103,7 @@ def test_personal_category_visible_only_to_owner(client, auth_headers):
 
 def test_budget_summary(client, auth_headers):
     cat = first_category_id(client, auth_headers)
-    month = date.today().strftime("%Y-%m")
+    month = current_month()
 
     assert client.get("/api/budget/summary", headers=auth_headers).status_code == 404
 
@@ -126,7 +125,7 @@ def test_budget_summary(client, auth_headers):
 
 
 def test_budget_update_does_not_duplicate(client, auth_headers):
-    month = date.today().strftime("%Y-%m")
+    month = current_month()
     client.put("/api/budgets", headers=auth_headers, json={"month": month, "limit_amount": 5000})
     client.put("/api/budgets", headers=auth_headers, json={"month": month, "limit_amount": 7000})
     budgets = client.get(f"/api/budgets?month={month}", headers=auth_headers).json()
