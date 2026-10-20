@@ -14,10 +14,12 @@ apt-get install -y nginx python3-venv git
 
 id studentwallet &>/dev/null || useradd --system --home "$APP" --shell /usr/sbin/nologin studentwallet
 
+# Папка принадлежит пользователю studentwallet, а скрипт идёт от root: разрешаем git работать в ней
+GIT="git -c safe.directory=$APP -C $APP"
 if [ -d "$APP/.git" ]; then
-  git -C "$APP" fetch origin
-  git -C "$APP" checkout "$BRANCH"
-  git -C "$APP" pull --ff-only origin "$BRANCH"
+  $GIT fetch origin
+  $GIT checkout "$BRANCH"
+  $GIT pull --ff-only origin "$BRANCH"
 else
   git clone --branch "$BRANCH" "$REPO" "$APP"
 fi
