@@ -36,6 +36,9 @@ export default function ImportStatement({ categories, onImported, onClose }) {
 
   const update = (i, patch) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   const selected = rows ? rows.filter((r) => r.on) : []
+  const setAll = (on) => setRows(rows.map((r) => ({ ...r, on })))
+  // Как при загрузке файла: без уже загруженных, внесённых вручную и переводов между своими счетами
+  const onlyNew = () => setRows(rows.map((r) => ({ ...r, on: !r.duplicate && !r.own_account && !r.manual_match })))
 
   async function confirm() {
     setError('')
@@ -81,6 +84,20 @@ export default function ImportStatement({ categories, onImported, onClose }) {
 
       {rows && (
         <>
+          <div className="import-select">
+            <button className="secondary" type="button" onClick={() => setAll(true)} disabled={busy}>
+              Выбрать все
+            </button>
+            <button className="secondary" type="button" onClick={() => setAll(false)} disabled={busy}>
+              Снять все
+            </button>
+            <button className="secondary" type="button" onClick={onlyNew} disabled={busy}>
+              Только новые
+            </button>
+            <span className="hint">
+              Выбрано {selected.length} из {rows.length}
+            </span>
+          </div>
           <div className="import-scroll">
             <table className="import-table">
               <thead>
