@@ -110,10 +110,11 @@
 | US-17 | Как админ, я хочу видеть список пользователей и блокировать их | Admin | 3 | M | 6 |
 | US-18 | Как админ, я хочу управлять глобальными категориями | Admin | 2 | L | 6 |
 | US-19 | Как админ, я хочу видеть общую статистику (число пользователей, трат) | Admin | 3 | L | 6 |
+| US-22 | Как студент, я хочу оплатить счёт за друзей, поделить его (поровну, вручную или по блюдам с чаевыми) и видеть, кто мне вернул деньги | Student | 8 | M | 4 |
 | US-20 | Как студент, я хочу экспортировать траты в CSV | Student | 2 | L | 6 |
 | US-21 | Как команда, мы хотим покрыть ключевую логику тестами и исправить баги | Команда | 8 | H | 7 |
 
-Итого 68 SP. На 7 спринтов выходит примерно по 10 SP: это комфортная нагрузка. Если успеваете быстрее, берите US-20 и расширения.
+Итого 76 SP. На 7 спринтов выходит примерно по 11 SP: это комфортная нагрузка. Если успеваете быстрее, берите US-20 и расширения.
 
 ---
 
@@ -147,12 +148,15 @@ Web UI (React)          iPhone: Siri + Shortcuts
 
 ### Модель данных (ER-диаграмма, 8 таблиц)
 
+Предупреждения о лимите (US-10) считаются на лету и показываются на экране, поэтому отдельной таблицы уведомлений нет.
+
 ```mermaid
 erDiagram
     USERS ||--o{ EXPENSES : makes
     USERS ||--o{ BUDGETS : sets
     USERS ||--o{ GOALS : has
-    USERS ||--o{ NOTIFICATIONS : receives
+    EXPENSES ||--o{ EXPENSE_SHARES : splits
+    USERS ||--o{ EXPENSE_SHARES : owes
     USERS ||--o{ API_TOKENS : owns
     USERS }o--|| ROLES : has
     CATEGORIES ||--o{ EXPENSES : classifies
@@ -188,6 +192,7 @@ erDiagram
         string note
         date spent_at
         string source "web | siri"
+        decimal paid_total "весь чек, если платили за друзей; amount тогда ваша доля"
     }
     BUDGETS {
         int id PK
@@ -204,13 +209,16 @@ erDiagram
         decimal saved_amount
         date deadline
     }
-    NOTIFICATIONS {
+    EXPENSE_SHARES {
         int id PK
-        int user_id FK
-        string message
-        string kind "80pct | 100pct | goal"
-        bool is_read
-        datetime created_at
+        int expense_id FK
+        int payer_id FK "кто платил"
+        int debtor_id FK "кто должен"
+        decimal amount
+        string status "pending | marked_paid | settled"
+        datetime marked_at
+        datetime settled_at
+        int debtor_expense_id FK "расход друга после возврата"
     }
     API_TOKENS {
         int id PK
@@ -233,7 +241,9 @@ erDiagram
 | GET | /api/budget/summary | Остаток, дневной лимит, % использования |
 | GET | /api/analytics/by-category, /by-day | Данные для графиков |
 | GET/POST | /api/goals | Цели |
-| GET | /api/notifications | Уведомления |
+| POST | /api/expenses/split-preview | Предпросмотр деления счёта (ничего не сохраняет) |
+| GET | /api/debts/owed-to-me, /api/debts/i-owe, /api/debts/summary | Кто должен вам, кому должны вы, итоги |
+| POST | /api/shares/{id}/mark-paid, /confirm, /reject | «Я оплатил», «Получил», «Не пришло» |
 | POST | /api/tokens | Создать токен для Shortcuts |
 | GET | /api/admin/users, PATCH /api/admin/users/{id} | Только для admin |
 
@@ -248,7 +258,7 @@ erDiagram
 | 1 | Основа | Репозиторий, структура проекта, БД и миграции, регистрация/вход (US-1, US-2), wireframes | Sprint 1–2: базовая система + auth + БД |
 | 2 | Безопасность и первый CRUD | Роли и защита маршрутов (US-3), CRUD трат (US-4, US-5) | Sprint 1–2 |
 | 3 | Ядро | Список с фильтрами (US-6), категории (US-7), бюджеты (US-8) | Sprint 3–4: core functionality |
-| 4 | Аналитика | Остаток и дневной лимит (US-9), уведомления (US-10), графики (US-11), доходы (US-12) | Sprint 3–4 |
+| 4 | Аналитика | Остаток и дневной лимит (US-9), уведомления (US-10), графики (US-11), доходы (US-12), делёжка счёта и долги (US-22) | Sprint 3–4 |
 | 5 | Siri и цели | Цели (US-13), API-токены (US-14), команда Shortcuts (US-15) | Sprint 5–6: advanced/integration |
 | 6 | Админка и автоматизация | Лимит при оплате (US-16), админ-панель (US-17–19), экспорт (US-20) | Sprint 5–6 |
 | 7 | Финализация | Тесты, баги, безопасность, деплой, документация, репетиция демо (US-21) | Sprint 7 |
