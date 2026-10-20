@@ -195,7 +195,7 @@ def test_full_repayment_flow(client):
     r = client.post(f"/api/shares/{share_id}/confirm", headers=a)
     assert r.status_code == 200
     assert r.json()["status"] == "settled"
-    assert client.get("/api/debts/summary", headers=a).json() == {"owed_to_me": 3333, "i_owe": 0, "to_confirm": 0}
+    assert client.get("/api/debts/summary", headers=a).json() == {"owed_to_me": 3333, "i_owe": 0, "to_confirm": 0, "reminded": 0}
     assert client.get("/api/debts/i-owe", headers=b).json() == []  # закрытые скрыты
     assert len(client.get("/api/debts/i-owe?include_settled=true", headers=b).json()) == 1
 

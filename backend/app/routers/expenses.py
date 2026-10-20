@@ -35,7 +35,7 @@ def _get_own_expense(db: Session, user: User, expense_id: int) -> Expense:
 
 
 def _compute(user: User, amount: float | None, split: SplitIn) -> SplitResult:
-    friends = [(p.email, to_cents(p.amount) if p.amount is not None else None) for p in split.participants]
+    friends = [(p.key, to_cents(p.amount) if p.amount is not None else None) for p in split.participants]
     items = [(to_cents(i.price), i.eaters) for i in split.items]
     try:
         return compute_split(
@@ -45,9 +45,15 @@ def _compute(user: User, amount: float | None, split: SplitIn) -> SplitResult:
             items,
             split.tip_percent,
             payer_email=user.email,
+            participate=split.i_participate,
         )
     except SplitError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+def _guest_names(split: SplitIn) -> dict[str, str]:
+    """{ключ гостя: имя, как его ввёл пользователь}"""
+    return {p.key: p.name for p in split.participants if p.email is None}
 
 
 @router.post("/split-preview", response_model=SplitPreviewOut)
@@ -58,17 +64,56 @@ def split_preview(
 ):
     """Показывает, кто сколько должен, ничего не сохраняя. Сайт вызывает его, пока вы заполняете форму."""
     result = _compute(user, data.amount, data.split)
-    found = find_users_by_email(db, result.friends.keys())
-    lines = [
-        SplitLine(
-            email=email,
-            name=display_name(found[email]) if email in found else email,
-            amount=from_cents(cents),
-            found=email in found,
+    guests = _guest_names(data.split)
+    found = find_users_by_email(db, [k for k in result.friends if k not in guests])
+    lines = []
+    for key, cents in result.friends.items():
+        if key in guests:
+            lines.append(SplitLine(key=key, email=None, name=guests[key], amount=from_cents(cents), found=True, guest=True))
+        else:
+            lines.append(
+                SplitLine(
+                    key=key,
+                    email=key,
+                    name=display_name(found[key]) if key in found else key,
+                    amount=from_cents(cents),
+                    found=key in found,
+                )
+            )
+    return SplitPreviewOut(
+        total=from_cents(result.total),
+        service=from_cents(result.service),
+        my_share=from_cents(result.mine),
+        lines=lines,
+    )
+
+
+def _resolve_debtors(db: Session, result: SplitResult, split: SplitIn) -> list[tuple[int | None, str | None, int]]:
+    """Проверяет друзей до сохранения: [(id пользователя или None для гостя, имя гостя, доля в копейках)]."""
+    guests = _guest_names(split)
+    friends = find_users_by_email(db, [k for k in result.friends if k not in guests])
+    missing = [key for key in result.friends if key not in guests and key not in friends]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Not found on the site: {', '.join(missing)}. Ask your friends to register, or add them by name",
         )
-        for email, cents in result.friends.items()
+    return [
+        (None if key in guests else friends[key].id, guests.get(key), cents) for key, cents in result.friends.items()
     ]
-    return SplitPreviewOut(total=from_cents(result.total), service=from_cents(result.service), my_share=from_cents(result.mine), lines=lines)
+
+
+def _add_shares(db: Session, user: User, expense: Expense, debtors: list[tuple[int | None, str | None, int]]) -> None:
+    for debtor_id, guest_name, cents in debtors:
+        db.add(
+            ExpenseShare(
+                expense_id=expense.id,
+                payer_id=user.id,
+                debtor_id=debtor_id,
+                debtor_name=guest_name,
+                amount=from_cents(cents),
+            )
+        )
 
 
 @router.get("", response_model=list[ExpenseOut])
@@ -116,13 +161,7 @@ def create_expense(
     if data.type != "expense":
         raise HTTPException(status_code=400, detail="Only expenses can be split")
     result = _compute(user, data.amount, data.split)
-    friends = find_users_by_email(db, result.friends.keys())
-    missing = [email for email in result.friends if email not in friends]
-    if missing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Not found on the site: {', '.join(missing)}. Ask your friends to register",
-        )
+    debtors = _resolve_debtors(db, result, data.split)
 
     expense = Expense(
         user_id=user.id,
@@ -136,15 +175,36 @@ def create_expense(
     )
     db.add(expense)
     db.flush()  # нужен id траты для долгов
-    for email, cents in result.friends.items():
-        db.add(
-            ExpenseShare(
-                expense_id=expense.id,
-                payer_id=user.id,
-                debtor_id=friends[email].id,
-                amount=from_cents(cents),
-            )
-        )
+    _add_shares(db, user, expense, debtors)
+    db.commit()
+    db.refresh(expense)
+    return expense
+
+
+@router.post("/{expense_id}/split", response_model=ExpenseOut)
+def split_existing_expense(
+    expense_id: int,
+    data: SplitIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Разделить уже сохранённую трату: вы заплатили, а потом решили поделить счёт с друзьями.
+
+    Сумма траты считается всем чеком. После деления в вашем бюджете остаётся только ваша доля
+    (или ноль, если вы сами не участвовали), а доли друзей становятся долгами."""
+    expense = _get_own_expense(db, user, expense_id)
+    if expense.type != "expense":
+        raise HTTPException(status_code=400, detail="Only expenses can be split")
+    if expense.shares:
+        raise HTTPException(status_code=409, detail="This expense is already split")
+    if db.query(ExpenseShare).filter(ExpenseShare.debtor_expense_id == expense.id).first() is not None:
+        raise HTTPException(status_code=409, detail="This expense records a debt payment and cannot be split")
+
+    result = _compute(user, float(expense.amount), data)
+    debtors = _resolve_debtors(db, result, data)
+    expense.amount = from_cents(result.mine)
+    expense.paid_total = from_cents(result.total)
+    _add_shares(db, user, expense, debtors)
     db.commit()
     db.refresh(expense)
     return expense

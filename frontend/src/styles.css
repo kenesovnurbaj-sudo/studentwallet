@@ -1470,3 +1470,38 @@ button:disabled {
   padding: 0 12px;
   white-space: nowrap;
 }
+
+/* Деление счёта: кнопка в форме, чаевые, действия в истории и долгах */
+.split-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 12px 0 4px;
+}
+
+.split-toggle .secondary.on {
+  border-color: var(--accent);
+  background: #eef1ff;
+  color: var(--accent);
+}
+
+.took-part {
+  margin: 4px 0 8px;
+}
+
+.split-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.split-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

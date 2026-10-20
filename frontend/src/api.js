@@ -107,6 +107,8 @@ export const api = {
   debtsIOwe: () => request('/debts/i-owe'),
   markPaid: (shareId, categoryId) =>
     request(`/shares/${shareId}/mark-paid`, { method: 'POST', body: { category_id: categoryId } }),
+  remindShare: (shareId) => request(`/shares/${shareId}/remind`, { method: 'POST' }),
+  splitExpense: (id, split) => request(`/expenses/${id}/split`, { method: 'POST', body: split }),
   confirmShare: (shareId) => request(`/shares/${shareId}/confirm`, { method: 'POST' }),
   rejectShare: (shareId) => request(`/shares/${shareId}/reject`, { method: 'POST' }),
 }

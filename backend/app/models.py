@@ -127,20 +127,27 @@ class AppMeta(Base):
 
 
 class ExpenseShare(Base):
-    """Долг друга по общему счёту: payer заплатил, debtor должен вернуть amount."""
+    """Долг друга по общему счёту: payer заплатил, debtor должен вернуть amount.
+
+    Друг может быть без аккаунта (гость): тогда debtor_id пуст, а имя лежит в debtor_name.
+    Гость сам ничего не отмечает, плательщик закрывает долг вручную."""
 
     __tablename__ = "expense_shares"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     expense_id: Mapped[int] = mapped_column(ForeignKey("expenses.id", ondelete="CASCADE"), index=True)
     payer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    debtor_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    debtor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
+    debtor_name: Mapped[str | None] = mapped_column(String(60), nullable=True)  # имя гостя без аккаунта
     amount: Mapped[float] = mapped_column(Numeric(12, 2))
     # pending - ждёт возврата, marked_paid - друг нажал «Я оплатил», settled - плательщик подтвердил
     status: Mapped[str] = mapped_column(String(12), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     marked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # напоминания о долге (только для друзей с аккаунтом: они видят их у себя)
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    remind_count: Mapped[int] = mapped_column(Integer, default=0)
     # запись о расходе в бюджете друга, появляется, когда он отметил возврат
     debtor_expense_id: Mapped[int | None] = mapped_column(
         ForeignKey("expenses.id", ondelete="SET NULL"), nullable=True
@@ -148,4 +155,4 @@ class ExpenseShare(Base):
 
     expense: Mapped[Expense] = relationship(foreign_keys=[expense_id], back_populates="shares")
     payer: Mapped[User] = relationship(foreign_keys=[payer_id])
-    debtor: Mapped[User] = relationship(foreign_keys=[debtor_id])
+    debtor: Mapped[User | None] = relationship(foreign_keys=[debtor_id])

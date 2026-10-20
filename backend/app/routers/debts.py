@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
@@ -14,6 +14,7 @@ from ..schemas import DebtSummary, MarkPaidIn, ShareOut
 router = APIRouter(prefix="/api", tags=["debts"])
 
 OPEN_STATUSES = ("pending", "marked_paid")
+REMIND_COOLDOWN = timedelta(hours=12)  # не чаще, чтобы не донимать друга
 
 
 def _share_out(share: ExpenseShare) -> ShareOut:
@@ -26,7 +27,11 @@ def _share_out(share: ExpenseShare) -> ShareOut:
         spent_at=expense.spent_at,
         paid_total=float(expense.paid_total) if expense.paid_total is not None else None,
         payer=brief(share.payer),
-        debtor=brief(share.debtor),
+        debtor=brief(share.debtor) if share.debtor is not None else None,
+        debtor_name=display_name(share.debtor) if share.debtor is not None else (share.debtor_name or "Friend"),
+        guest=share.debtor_id is None,
+        reminded_at=share.reminded_at,
+        remind_count=share.remind_count or 0,
         created_at=share.created_at,
         marked_at=share.marked_at,
         settled_at=share.settled_at,
@@ -89,7 +94,41 @@ def debt_summary(user: User = Depends(get_current_user), db: Session = Depends(g
         .filter(ExpenseShare.payer_id == user.id, ExpenseShare.status == "marked_paid")
         .scalar()
     )
-    return DebtSummary(owed_to_me=round(float(owed), 2), i_owe=round(float(owe), 2), to_confirm=int(to_confirm))
+    reminded = (
+        db.query(func.count(ExpenseShare.id))
+        .filter(
+            ExpenseShare.debtor_id == user.id,
+            ExpenseShare.status == "pending",
+            ExpenseShare.reminded_at.isnot(None),
+        )
+        .scalar()
+    )
+    return DebtSummary(
+        owed_to_me=round(float(owed), 2), i_owe=round(float(owe), 2), to_confirm=int(to_confirm), reminded=int(reminded)
+    )
+
+
+@router.post("/shares/{share_id}/remind", response_model=ShareOut)
+def remind(
+    share_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Плательщик напоминает другу о долге. Друг видит напоминание у себя в блоке «Debts».
+
+    Друзьям без аккаунта напомнить в приложении нельзя: для них копируется текст сообщения."""
+    share = _get_share(db, user, share_id, as_role="payer")
+    if share.status != "pending":
+        raise HTTPException(status_code=409, detail="Nothing to remind about: this debt is not waiting for payment")
+    if share.debtor_id is None:
+        raise HTTPException(status_code=400, detail="This friend has no account. Copy the reminder text and send it yourself")
+    if share.reminded_at is not None and datetime.utcnow() - share.reminded_at < REMIND_COOLDOWN:
+        raise HTTPException(status_code=429, detail="You reminded them recently. Try again in a few hours")
+    share.reminded_at = datetime.utcnow()
+    share.remind_count = (share.remind_count or 0) + 1
+    db.commit()
+    db.refresh(share)
+    return _share_out(share)
 
 
 @router.post("/shares/{share_id}/mark-paid", response_model=ShareOut)

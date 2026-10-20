@@ -25,7 +25,6 @@ export default function ExpenseForm({
   const [quickBusy, setQuickBusy] = useState(false)
   const [quickHint, setQuickHint] = useState('')
   const [split, setSplit] = useState(emptySplit())
-
   const [newCatOpen, setNewCatOpen] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [newCatIcon, setNewCatIcon] = useState('🏷️')
@@ -76,13 +75,10 @@ export default function ExpenseForm({
     setDate(editing.spent_at)
     setSplit(emptySplit())
     setError('')
-
-    if (sectionRef.current) {
-      sectionRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
-    }
+    sectionRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
   }, [editing])
 
   function resetFields() {
@@ -119,17 +115,14 @@ export default function ExpenseForm({
       note: note.trim(),
       spent_at: date,
     }
-
     let payload
 
     if (splitting) {
       const reason = incompleteReason(split, amount)
-
       if (reason) {
         setError(reason)
         return
       }
-
       payload = {
         ...buildRequest(split, amount),
         ...common,
@@ -142,19 +135,16 @@ export default function ExpenseForm({
         setError('Enter an amount greater than zero')
         return
       }
-
       payload = { amount: value, ...common }
     }
 
     setBusy(true)
-
     try {
       if (editing) {
         await api.updateExpense(editing.id, payload)
       } else {
         await api.addExpense({ ...payload, source: 'web' })
       }
-
       resetFields()
       onSaved()
     } catch (err) {
@@ -166,20 +156,17 @@ export default function ExpenseForm({
 
   async function createCategory() {
     const name = newCatName.trim()
-
     if (!name) {
       setError('Enter a category name')
       return
     }
 
     setError('')
-
     try {
       const created = await api.addCategory({
         name,
         icon: newCatIcon.trim(),
       })
-
       await onCategoryCreated()
       setCategoryId(String(created.id))
       setNewCatOpen(false)
@@ -206,7 +193,6 @@ export default function ExpenseForm({
             <label className="sr-only" htmlFor="quick-add">
               Describe the entry in your own words
             </label>
-
             <input
               id="quick-add"
               value={quick}
@@ -215,7 +201,6 @@ export default function ExpenseForm({
               placeholder="Type it like “lunch at canteen 2500”"
               autoComplete="off"
             />
-
             <button
               className="secondary"
               type="submit"
@@ -224,7 +209,6 @@ export default function ExpenseForm({
               {quickBusy ? 'Reading…' : 'Fill in'}
             </button>
           </form>
-
           {quickHint && <p className="ok-note">{quickHint}</p>}
         </>
       )}
@@ -239,7 +223,6 @@ export default function ExpenseForm({
           >
             Expense
           </button>
-
           <button
             type="button"
             className={type === 'income' ? 'on' : ''}
@@ -274,7 +257,6 @@ export default function ExpenseForm({
               />
             </label>
           )}
-
           <label>
             Category
             <select
@@ -302,7 +284,6 @@ export default function ExpenseForm({
                 onKeyDown={onNewCatKey}
               />
             </label>
-
             <label className="new-cat-name">
               Category name
               <input
@@ -314,7 +295,6 @@ export default function ExpenseForm({
                 autoFocus
               />
             </label>
-
             <button
               type="button"
               className="secondary"
@@ -322,7 +302,6 @@ export default function ExpenseForm({
             >
               Create
             </button>
-
             <button
               type="button"
               className="link"
@@ -351,7 +330,6 @@ export default function ExpenseForm({
               placeholder="For example, lunch"
             />
           </label>
-
           <label>
             Date
             <input
@@ -375,17 +353,21 @@ export default function ExpenseForm({
 
         {!editing && type === 'expense' && (
           <>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={split.on}
-                onChange={(e) =>
-                  setSplit({ ...split, on: e.target.checked })
-                }
-              />
-              <span>I paid for friends: they will pay back their share</span>
-            </label>
-
+            <div className="split-toggle">
+              <button
+                type="button"
+                className={`secondary ${split.on ? 'on' : ''}`}
+                aria-pressed={split.on}
+                onClick={() => setSplit({ ...split, on: !split.on })}
+              >
+                {split.on
+                  ? '✓ Splitting with friends'
+                  : '+ Split with friends'}
+              </button>
+              <span className="muted small">
+                Paid for others? Split the bill and track who owes you.
+              </span>
+            </div>
             {split.on && (
               <SplitEditor
                 split={split}
@@ -410,7 +392,6 @@ export default function ExpenseForm({
           >
             {busy ? 'Saving…' : editing ? 'Save changes' : 'Add'}
           </button>
-
           {editing && (
             <button className="link" type="button" onClick={cancelEdit}>
               Cancel
