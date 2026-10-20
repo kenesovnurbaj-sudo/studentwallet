@@ -5,6 +5,7 @@ import Hero from './Hero.jsx'
 import ExpenseForm from './ExpenseForm.jsx'
 import ExpenseList from './ExpenseList.jsx'
 import ImportStatement from './ImportStatement.jsx'
+import BudgetSplit from './BudgetSplit.jsx'
 import Assistant from './Assistant.jsx'
 
 export default function Dashboard({ user, onLogout }) {
@@ -15,6 +16,7 @@ export default function Dashboard({ user, onLogout }) {
   const [filter, setFilter] = useState('')
   const [error, setError] = useState('')
   const [importOpen, setImportOpen] = useState(false)
+  const [splitOpen, setSplitOpen] = useState(false)
 
   const loadSummary = useCallback(async () => {
     try {
@@ -71,6 +73,13 @@ export default function Dashboard({ user, onLogout }) {
           </p>
         )}
         <Hero summary={summary} month={month} onSaved={loadSummary} />
+        {summary && (
+          <p className="split-row">
+            <button className="secondary" type="button" onClick={() => setSplitOpen(true)}>
+              Split budget with AI
+            </button>
+          </p>
+        )}
         <ExpenseForm categories={categories} onAdded={refresh} />
         <ExpenseList
           expenses={expenses}
@@ -81,6 +90,7 @@ export default function Dashboard({ user, onLogout }) {
         />
       </main>
 
+      {splitOpen && <BudgetSplit month={month} onClose={() => setSplitOpen(false)} />}
       {importOpen && (
         <ImportStatement categories={categories} onImported={refresh} onClose={() => setImportOpen(false)} />
       )}

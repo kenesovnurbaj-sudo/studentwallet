@@ -95,6 +95,20 @@ class BudgetOut(BaseModel):
     category_id: int | None
 
 
+class SplitItemIn(BaseModel):
+    category_id: int
+    limit_amount: float = Field(gt=0)
+
+
+class BudgetSplitSet(BaseModel):
+    month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    items: list[SplitItemIn] = Field(min_length=1, max_length=30)
+
+
+class BudgetSplitSaved(BaseModel):
+    saved: int
+
+
 class BudgetSummary(BaseModel):
     month: str
     limit: float

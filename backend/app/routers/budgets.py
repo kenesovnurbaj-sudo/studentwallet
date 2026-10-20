@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user
 from ..models import Budget, Expense, User
-from ..schemas import BudgetOut, BudgetSet, BudgetSummary
+from ..models import Category
+from ..schemas import BudgetOut, BudgetSet, BudgetSplitSaved, BudgetSplitSet, BudgetSummary
 
 router = APIRouter(prefix="/api", tags=["budgets"])
 
@@ -58,6 +59,35 @@ def set_budget(
     db.commit()
     db.refresh(budget)
     return budget
+
+
+@router.put("/budgets/split", response_model=BudgetSplitSaved)
+def save_budget_split(
+    data: BudgetSplitSet,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Сохраняет лимиты по категориям на месяц одним запросом (например, принятое предложение ИИ)."""
+    ids = [i.category_id for i in data.items]
+    if len(set(ids)) != len(ids):
+        raise HTTPException(status_code=400, detail="Duplicate category")
+    allowed = {
+        c.id for c in db.query(Category).filter((Category.user_id.is_(None)) | (Category.user_id == user.id))
+    }
+    if any(i not in allowed for i in ids):
+        raise HTTPException(status_code=400, detail="Unknown category")
+
+    existing = {
+        b.category_id: b
+        for b in db.query(Budget).filter(Budget.user_id == user.id, Budget.month == data.month, Budget.category_id.isnot(None))
+    }
+    for item in data.items:
+        if item.category_id in existing:
+            existing[item.category_id].limit_amount = item.limit_amount
+        else:
+            db.add(Budget(user_id=user.id, month=data.month, category_id=item.category_id, limit_amount=item.limit_amount))
+    db.commit()
+    return BudgetSplitSaved(saved=len(data.items))
 
 
 @router.get("/budget/summary", response_model=BudgetSummary)

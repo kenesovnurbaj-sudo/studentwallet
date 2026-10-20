@@ -31,6 +31,7 @@ CATEGORY_RULES = [
               "zero arbat", "small", "kfc", "burger", "pizza", "sushi", "coffee", "кофе", "market", "маркет",
               "lunch", "dinner", "breakfast", "canteen", "restaurant", "groceries", "grocery", "snack", "snacks",
               "обед", "ужин", "завтрак", "столовая", "еда", "продукты"]),
+    ("Housing", ["rent", "dorm", "dormitory", "utilities", "аренда", "общежитие", "коммуналка", "квартира"]),
     ("Education", ["university", "университет", "колледж", "книг", "kitap", "book", "books", "textbook", "course",
                    "tuition", "exam", "учебник", "курс"]),
 ]

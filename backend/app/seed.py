@@ -12,6 +12,8 @@ DEFAULT_CATEGORIES = [
     ("Education", "📚"),
     ("Entertainment", "🎬"),
     ("Subscriptions", "📱"),
+    ("Housing", "🏠"),
+    ("Savings", "💰"),
     ("Transfers", "💸"),
     ("Other", "🧾"),
 ]
