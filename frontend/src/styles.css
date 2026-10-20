@@ -58,7 +58,7 @@ select {
   color: var(--muted);
 }
 
-/* ---------- Общие элементы форм ---------- */
+/* Общие элементы форм */
 
 label {
   display: flex;
@@ -154,7 +154,7 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-/* ---------- Вход ---------- */
+/* Вход */
 
 .auth {
   min-height: 100vh;
@@ -197,7 +197,7 @@ button:disabled {
   font-size: 1.25rem;
 }
 
-/* ---------- Основная страница ---------- */
+/* Основная страница */
 
 .page {
   max-width: 680px;
@@ -226,7 +226,7 @@ button:disabled {
   flex-shrink: 0;
 }
 
-/* ---------- Главный блок ---------- */
+/* Главный блок */
 
 .hero {
   background: var(--ink);
@@ -241,7 +241,6 @@ button:disabled {
   font-size: 0.95rem;
 }
 
-/* Название месяца приходит строчными буквами: поднимаем только первую */
 .hero-label::first-letter {
   text-transform: uppercase;
 }
@@ -337,7 +336,7 @@ button:disabled {
   border-color: transparent;
 }
 
-/* ---------- Блоки ---------- */
+/* Блоки */
 
 .block {
   margin-bottom: 36px;
@@ -400,7 +399,7 @@ button:disabled {
   box-shadow: 0 1px 2px rgba(18, 24, 43, 0.12);
 }
 
-/* ---------- История ---------- */
+/* История */
 
 .rows {
   list-style: none;
@@ -478,7 +477,7 @@ button:disabled {
   color: var(--muted);
 }
 
-/* ---------- Узкие экраны ---------- */
+/* Узкие экраны */
 
 @media (max-width: 520px) {
   .grid-2 {
@@ -502,6 +501,7 @@ button:disabled {
 }
 
 /* ИИ-ассистент */
+
 .chat-fab {
   position: fixed;
   right: 20px;
@@ -627,6 +627,7 @@ button:disabled {
 }
 
 /* Импорт выписки */
+
 .hint {
   margin: 4px 0 12px;
   color: var(--muted);
@@ -705,7 +706,7 @@ button:disabled {
   margin-top: 12px;
 }
 
-/* ---------- Редактирование и своя категория ---------- */
+/* Редактирование и своя категория */
 
 .secondary {
   height: 40px;
@@ -757,7 +758,8 @@ button:disabled {
   color: var(--muted);
 }
 
-/* Поиск и массовые действия в истории */
+/* Поиск и массовые действия */
+
 .search {
   width: 100%;
   height: 44px;
@@ -811,6 +813,7 @@ button:disabled {
 }
 
 /* Быстрый ввод фразой */
+
 .quick {
   display: flex;
   gap: 8px;
@@ -845,6 +848,7 @@ button:disabled {
 }
 
 /* Прогноз и предупреждения */
+
 .forecast {
   margin-top: 16px;
   padding: 16px 18px;
@@ -902,6 +906,7 @@ button:disabled {
 }
 
 /* Остаток по категориям */
+
 .cat-balances {
   margin-top: 24px;
 }
@@ -921,7 +926,6 @@ button:disabled {
 
 .cat-amount {
   color: var(--muted);
-
   font-weight: 500;
 }
 
@@ -954,7 +958,7 @@ button:disabled {
   box-shadow: -12px 0 0 #e9edff, 12px 0 0 #e9edff;
 }
 
-/* ---------- Аналитика ---------- */
+/* Аналитика */
 
 .muted {
   margin-top: 4px;
@@ -1162,7 +1166,7 @@ button:disabled {
   }
 }
 
-/* ---------- Деление счёта и долги ---------- */
+/* Деление счёта и долги */
 
 .small {
   font-size: 0.85rem;
@@ -1471,7 +1475,8 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* Деление счёта: кнопка в форме, чаевые, действия в истории и долгах */
+/* Кнопка разделения счёта */
+
 .split-toggle {
   display: flex;
   align-items: center;
@@ -1504,4 +1509,102 @@ button:disabled {
 .split-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Круговая диаграмма */
+
+.chart-caption {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.chart-layout {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin-top: 20px;
+}
+
+.spending-pie {
+  width: 190px;
+  height: 190px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.chart-details {
+  flex: 1;
+  min-width: 240px;
+}
+
+.chart-legend {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.chart-legend li {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.chart-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+@media (max-width: 420px) {
+  .chart-details {
+    min-width: 0;
+    width: 100%;
+    flex: auto;
+  }
+}
+
+/* Лимиты категорий */
+
+.category-budget-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.category-budget-card {
+  padding: 16px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #dbe1ef);
+  border-radius: 12px;
+}
+
+.category-budget-card .block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.category-meter {
+  height: 10px;
+  margin-top: 12px;
+  overflow: hidden;
+  background: #e4e8f1;
+  border-radius: 6px;
+}
+
+.category-meter > div {
+  height: 100%;
+  border-radius: 6px;
+}
+
+.category-warning {
+  margin-top: 8px;
+  font-weight: 600;
 }
