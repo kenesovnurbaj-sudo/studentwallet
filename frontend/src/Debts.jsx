@@ -79,24 +79,24 @@ export default function Debts({ categories, version, onChanged }) {
   return (
     <section className="block debts">
       <div className="block-head">
-        <h2>Долги</h2>
+        <h2>Debts</h2>
         <button type="button" className="link" onClick={load}>
-          Обновить
+          Refresh
         </button>
       </div>
 
-      <div className="segmented" role="group" aria-label="Чьи долги показывать">
+      <div className="segmented" role="group" aria-label="Which debts to show">
         <button type="button" className={tab === 'owed' ? 'on' : ''} aria-pressed={tab === 'owed'} onClick={() => choose('owed')}>
-          Мне должны · {money(owedTotal)}
+          Owed to me · {money(owedTotal)}
         </button>
         <button type="button" className={tab === 'owe' ? 'on' : ''} aria-pressed={tab === 'owe'} onClick={() => choose('owe')}>
-          Я должен · {money(oweTotal)}
+          I owe · {money(oweTotal)}
         </button>
       </div>
 
       {tab === 'owed' && toConfirm > 0 && (
         <p className="notice">
-          {toConfirm === 1 ? 'Один друг отметил' : `Друзья отметили (${toConfirm})`}, что вернул деньги. Проверьте перевод и подтвердите.
+          {toConfirm === 1 ? 'One friend says they paid you back' : `${toConfirm} friends say they paid you back`}. Check the transfer and confirm.
         </p>
       )}
 
@@ -108,7 +108,7 @@ export default function Debts({ categories, version, onChanged }) {
 
       {tab === 'owed' && (
         <>
-          {owed.length === 0 && <p className="empty">Вам никто не должен.</p>}
+          {owed.length === 0 && <p className="empty">Nobody owes you anything.</p>}
           {groupBy(owed, 'debtor').map(({ person, items }) => (
             <div className="debt-group" key={person.id}>
               <div className="debt-head">
@@ -122,48 +122,48 @@ export default function Debts({ categories, version, onChanged }) {
                 {items.map((d) => (
                   <li className="debt-item" key={d.id}>
                     <span className="row-main">
-                      <span className="row-title">{d.note || 'Общий счёт'}</span>
+                      <span className="row-title">{d.note || 'Shared bill'}</span>
                       <span className="row-sub">
                         {shortDate(d.spent_at)}
-                        {d.paid_total != null ? `, чек ${money(d.paid_total)}` : ''}
+                        {d.paid_total != null ? `, bill ${money(d.paid_total)}` : ''}
                       </span>
                     </span>
                     <span className="row-amount">{money(d.amount)}</span>
                     <span className="debt-actions">
                       {d.status === 'marked_paid' ? (
                         <>
-                          <span className="badge wait">друг отметил возврат</span>
+                          <span className="badge wait">friend marked as paid</span>
                           <button
                             type="button"
                             className="secondary"
                             disabled={busyId === d.id}
                             onClick={() => act(d, () => api.confirmShare(d.id))}
                           >
-                            Получил
+                            Received
                           </button>
                           <button
                             type="button"
                             className="link"
                             disabled={busyId === d.id}
                             onClick={() =>
-                              act(d, () => api.rejectShare(d.id), `${person.name} отметил возврат, но деньги не пришли? Долг снова станет открытым.`)
+                              act(d, () => api.rejectShare(d.id), `${person.name} marked this as paid but the money has not arrived? The debt will become open again.`)
                             }
                           >
-                            Не пришло
+                            Not received
                           </button>
                         </>
                       ) : (
                         <>
-                          <span className="badge">ждёт возврата</span>
+                          <span className="badge">awaiting payment</span>
                           <button
                             type="button"
                             className="link"
                             disabled={busyId === d.id}
                             onClick={() =>
-                              act(d, () => api.confirmShare(d.id), `Закрыть долг ${money(d.amount)}: ${person.name} вернул деньги (например, наличными)?`)
+                              act(d, () => api.confirmShare(d.id), `Close the ${money(d.amount)} debt: did ${person.name} pay you back (for example, in cash)?`)
                             }
                           >
-                            Вернул без сайта
+                            Paid outside the app
                           </button>
                         </>
                       )}
@@ -178,10 +178,10 @@ export default function Debts({ categories, version, onChanged }) {
 
       {tab === 'owe' && (
         <>
-          {owe.length === 0 && <p className="empty">Вы никому не должны.</p>}
+          {owe.length === 0 && <p className="empty">You do not owe anyone.</p>}
           {owe.some((d) => d.status === 'pending') && (
             <label className="pay-category">
-              Когда вернёте, записать как расход в категорию
+              When you pay back, record it as an expense in category
               <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -204,26 +204,26 @@ export default function Debts({ categories, version, onChanged }) {
                 {items.map((d) => (
                   <li className="debt-item" key={d.id}>
                     <span className="row-main">
-                      <span className="row-title">{d.note || 'Общий счёт'}</span>
+                      <span className="row-title">{d.note || 'Shared bill'}</span>
                       <span className="row-sub">
                         {shortDate(d.spent_at)}
-                        {d.paid_total != null ? `, чек ${money(d.paid_total)}` : ''}
+                        {d.paid_total != null ? `, bill ${money(d.paid_total)}` : ''}
                       </span>
                     </span>
                     <span className="row-amount">{money(d.amount)}</span>
                     <span className="debt-actions">
                       {d.status === 'marked_paid' ? (
-                        <span className="badge wait">ждёт подтверждения от {person.name}</span>
+                        <span className="badge wait">waiting for {person.name} to confirm</span>
                       ) : (
                         <button
                           type="button"
                           className="primary small"
                           disabled={busyId === d.id || !categoryId}
                           onClick={() =>
-                            act(d, () => api.markPaid(d.id, Number(categoryId)), `Вы перевели ${money(d.amount)} пользователю ${person.name}? Сумма запишется в ваши расходы.`)
+                            act(d, () => api.markPaid(d.id, Number(categoryId)), `Did you transfer ${money(d.amount)} to ${person.name}? The amount will be added to your expenses.`)
                           }
                         >
-                          Я оплатил
+                          I paid
                         </button>
                       )}
                     </span>

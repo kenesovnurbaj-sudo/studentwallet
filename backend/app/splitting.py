@@ -72,7 +72,7 @@ def distribute_proportionally(amount: int, weights: dict[str, int]) -> dict[str,
 def _items_base(items: list[tuple[int, list[str]]], friends: list[str]) -> dict[str, int]:
     """Сколько заказал каждый (без обслуживания). Блюдо на нескольких делится между ними поровну."""
     if not items:
-        raise SplitError("Добавьте хотя бы одну позицию из чека")
+        raise SplitError("Add at least one item from the bill")
 
     known = {ME, *friends}
     base = {ME: 0, **{email: 0 for email in friends}}
@@ -82,11 +82,11 @@ def _items_base(items: list[tuple[int, list[str]]], friends: list[str]) -> dict[
         for eater in eaters:
             eater = ME if eater.strip().lower() == ME else _norm(eater)
             if eater not in known:
-                raise SplitError(f"В позиции указан участник, которого нет в списке: {eater}")
+                raise SplitError(f"An item mentions someone who is not in the list: {eater}")
             if eater not in keys:
                 keys.append(eater)
         if not keys:
-            raise SplitError("У каждой позиции должен быть хотя бы один человек")
+            raise SplitError("Every item must have at least one person")
         for key, cents in split_evenly(price, keys).items():
             base[key] += cents
     return base
@@ -129,35 +129,35 @@ def compute_split(
     for raw_email, friend_amount in friends:
         email = _norm(raw_email)
         if email == _norm(payer_email):
-            raise SplitError("Себя добавлять не нужно: ваша доля считается автоматически")
+            raise SplitError("Do not add yourself: your share is calculated automatically")
         if email in emails:
-            raise SplitError(f"Друг указан дважды: {email}")
+            raise SplitError(f"Friend listed twice: {email}")
         emails.append(email)
         if friend_amount is not None:
             custom_amounts[email] = friend_amount
 
     if not emails:
-        raise SplitError("Добавьте хотя бы одного друга")
+        raise SplitError("Add at least one friend")
 
     if mode == "items":
         base = _items_base(items or [], emails)
     else:
         if amount is None or amount <= 0:
-            raise SplitError("Укажите сумму чека")
+            raise SplitError("Enter the bill total")
         if mode == "equal":
             base = split_evenly(amount, [ME, *emails])
             if any(base[e] <= 0 for e in emails):
-                raise SplitError("Сумма слишком мала, чтобы поделить на всех")
+                raise SplitError("The amount is too small to split between everyone")
         elif mode == "custom":
             missing = [e for e in emails if e not in custom_amounts]
             if missing:
-                raise SplitError(f"Укажите сумму для: {', '.join(missing)}")
+                raise SplitError(f"Enter an amount for: {', '.join(missing)}")
             owed = sum(custom_amounts.values())
             if owed > amount:
-                raise SplitError("Сумма долей друзей больше суммы чека")
+                raise SplitError("Friends’ shares add up to more than the bill")
             base = {ME: amount - owed, **{e: custom_amounts[e] for e in emails}}
         else:
-            raise SplitError("Неизвестный способ деления")
+            raise SplitError("Unknown split method")
 
     totals = _add_service(base, tip_percent)
     result = SplitResult(
@@ -167,5 +167,5 @@ def compute_split(
         service=sum(totals.values()) - sum(base.values()),
     )
     if len(result.friends) == 0:
-        raise SplitError("Никто, кроме вас, не должен по этому счёту")
+        raise SplitError("Nobody except you owes anything for this bill")
     return result

@@ -37,11 +37,11 @@ def _get_share(db: Session, user: User, share_id: int, *, as_role: str) -> Expen
     """Находит долг. Посторонний человек получает 404, чтобы не узнать, что такой долг есть."""
     share = db.get(ExpenseShare, share_id)
     if share is None or user.id not in (share.payer_id, share.debtor_id):
-        raise HTTPException(status_code=404, detail="Долг не найден")
+        raise HTTPException(status_code=404, detail="Debt not found")
     if as_role == "payer" and share.payer_id != user.id:
-        raise HTTPException(status_code=403, detail="Это действие доступно только тому, кто платил за счёт")
+        raise HTTPException(status_code=403, detail="Only the person who paid the bill can do this")
     if as_role == "debtor" and share.debtor_id != user.id:
-        raise HTTPException(status_code=403, detail="Это действие доступно только тому, кто должен")
+        raise HTTPException(status_code=403, detail="Only the person who owes can do this")
     return share
 
 
@@ -102,10 +102,10 @@ def mark_paid(
     """Должник нажимает «Я оплатил». Сумма записывается в его расходы, плательщику приходит запрос подтвердить."""
     share = _get_share(db, user, share_id, as_role="debtor")
     if share.status != "pending":
-        raise HTTPException(status_code=409, detail="Этот долг уже отмечен как оплаченный")
+        raise HTTPException(status_code=409, detail="This debt is already marked as paid")
     visible_category(db, user, data.category_id)
 
-    note = f"Долг: {display_name(share.payer)}"
+    note = f"Debt: {display_name(share.payer)}"
     if share.expense.note:
         note += f" — {share.expense.note}"
     own_expense = Expense(
@@ -137,7 +137,7 @@ def confirm(
     """Плательщик подтверждает, что деньги получил. Можно и без отметки друга (например, вернул наличными)."""
     share = _get_share(db, user, share_id, as_role="payer")
     if share.status == "settled":
-        raise HTTPException(status_code=409, detail="Этот долг уже закрыт")
+        raise HTTPException(status_code=409, detail="This debt is already settled")
     share.status = "settled"
     share.settled_at = datetime.utcnow()
     db.commit()
@@ -154,7 +154,7 @@ def reject(
     """Плательщик говорит «деньги не пришли»: долг снова открыт, а запись в бюджете друга удаляется."""
     share = _get_share(db, user, share_id, as_role="payer")
     if share.status != "marked_paid":
-        raise HTTPException(status_code=409, detail="Отклонять нечего: друг не отмечал возврат")
+        raise HTTPException(status_code=409, detail="Nothing to reject: the friend has not marked it as paid")
     if share.debtor_expense_id is not None:
         own_expense = db.get(Expense, share.debtor_expense_id)
         if own_expense is not None:

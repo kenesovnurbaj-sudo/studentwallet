@@ -132,7 +132,7 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
           {shown.map((item) => {
             const cat = byId[item.category_id]
             const income = item.type === 'income'
-            const title = item.note || (cat ? cat.name : 'Без названия')
+            const title = item.note || (cat ? cat.name : 'Untitled')
             return (
               <li key={item.id} className={`row-item ${editingId === item.id ? 'is-editing' : ''}`}>
                 {selecting && (
@@ -162,8 +162,8 @@ export default function ExpenseList({ expenses, categories, filter, onFilter, on
                   className="icon-btn"
                   type="button"
                   onClick={() => onEdit(item)}
-                  aria-label={`Изменить запись «${title}»`}
-                  title="Изменить"
+                  aria-label={`Edit entry “${title}”`}
+                  title="Edit"
                 >
                   ✎
                 </button>

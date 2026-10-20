@@ -7,9 +7,9 @@ import { money } from './format.js'
 export const emptySplit = () => ({ on: false, mode: 'equal', friends: [], items: [], tip: '' })
 
 const MODES = [
-  ['equal', 'Поровну'],
-  ['custom', 'Вручную'],
-  ['items', 'По блюдам'],
+  ['equal', 'Equally'],
+  ['custom', 'Custom'],
+  ['items', 'By item'],
 ]
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -20,17 +20,17 @@ const newItem = (eaters) => ({ key: ++itemCounter, name: '', price: '', eaters }
 
 // Чего не хватает, чтобы посчитать деление. Пустая строка значит «всё заполнено».
 export function incompleteReason(split, amount) {
-  if (split.friends.length === 0) return 'Добавьте хотя бы одного друга'
+  if (split.friends.length === 0) return 'Add at least one friend'
   if (split.mode === 'items') {
     const filled = split.items.filter((i) => Number(i.price) > 0)
-    if (filled.length === 0) return 'Добавьте позиции из чека и цены'
+    if (filled.length === 0) return 'Add the bill items and prices'
     const lonely = filled.find((i) => i.eaters.length === 0)
-    if (lonely) return `Отметьте, кто ел «${lonely.name.trim() || 'позиция'}»`
+    if (lonely) return `Mark who ate “${lonely.name.trim() || 'item'}”`
     return ''
   }
-  if (!(Number(amount) > 0)) return 'Введите сумму чека'
+  if (!(Number(amount) > 0)) return 'Enter the bill total'
   if (split.mode === 'custom' && split.friends.some((f) => !(Number(f.amount) > 0))) {
-    return 'Укажите сумму для каждого друга'
+    return 'Enter an amount for each friend'
   }
   return ''
 }
@@ -101,11 +101,11 @@ export default function SplitEditor({ split, amount, onChange }) {
     const email = draft.trim().toLowerCase()
     if (!email) return
     if (!EMAIL.test(email)) {
-      setFriendError('Проверьте email друга')
+      setFriendError('Check your friend’s email')
       return
     }
     if (split.friends.some((f) => f.email === email)) {
-      setFriendError('Этот друг уже добавлен')
+      setFriendError('This friend is already added')
       return
     }
     setFriendError('')
@@ -148,7 +148,7 @@ export default function SplitEditor({ split, amount, onChange }) {
 
   return (
     <div className="split">
-      <div className="segmented" role="group" aria-label="Как делить счёт">
+      <div className="segmented" role="group" aria-label="How to split the bill">
         {MODES.map(([value, label]) => (
           <button
             key={value}
@@ -164,7 +164,7 @@ export default function SplitEditor({ split, amount, onChange }) {
 
       <div className="split-friends">
         <label>
-          Email друга
+          Friend’s email
           <span className="inline-add">
             <input
               type="email"
@@ -177,7 +177,7 @@ export default function SplitEditor({ split, amount, onChange }) {
               placeholder="friend@gmail.com"
             />
             <button type="button" className="secondary" onClick={addFriend}>
-              Добавить
+              Add
             </button>
           </span>
         </label>
@@ -186,7 +186,7 @@ export default function SplitEditor({ split, amount, onChange }) {
             {friendError}
           </p>
         ) : (
-          <p className="muted small">Друг должен быть зарегистрирован на сайте. Он увидит свой долг у себя.</p>
+          <p className="muted small">Your friend must be registered on the site. They will see their debt in their own account.</p>
         )}
 
         {split.friends.length > 0 && (
@@ -205,16 +205,16 @@ export default function SplitEditor({ split, amount, onChange }) {
                     step="any"
                     value={f.amount}
                     onChange={(e) => patchFriend(f.email, { amount: e.target.value })}
-                    placeholder="Сумма, ₸"
-                    aria-label={`Сколько должен ${f.email}`}
+                    placeholder="Amount, ₸"
+                    aria-label={`How much ${f.email} owes`}
                   />
                 )}
                 <button
                   type="button"
                   className="icon-btn"
                   onClick={() => removeFriend(f.email)}
-                  aria-label={`Убрать ${f.email}`}
-                  title="Убрать"
+                  aria-label={`Remove ${f.email}`}
+                  title="Remove"
                 >
                   ×
                 </button>
@@ -226,7 +226,7 @@ export default function SplitEditor({ split, amount, onChange }) {
 
       {split.mode === 'items' && (
         <div className="split-items">
-          <h3>Позиции из чека</h3>
+          <h3>Bill items</h3>
           <ul className="item-list">
             {split.items.map((item, index) => (
               <li key={item.key} className="item-row">
@@ -235,8 +235,8 @@ export default function SplitEditor({ split, amount, onChange }) {
                     value={item.name}
                     maxLength={80}
                     onChange={(e) => patchItem(item.key, { name: e.target.value })}
-                    placeholder="Что заказали"
-                    aria-label={`Название позиции ${index + 1}`}
+                    placeholder="What was ordered"
+                    aria-label={`Item ${index + 1} name`}
                   />
                   <input
                     type="number"
@@ -245,21 +245,21 @@ export default function SplitEditor({ split, amount, onChange }) {
                     step="any"
                     value={item.price}
                     onChange={(e) => patchItem(item.key, { price: e.target.value })}
-                    placeholder="Цена, ₸"
-                    aria-label={`Цена позиции ${index + 1}`}
+                    placeholder="Price, ₸"
+                    aria-label={`Item ${index + 1} price`}
                   />
                   <button
                     type="button"
                     className="icon-btn"
                     onClick={() => update({ items: split.items.filter((i) => i.key !== item.key) })}
-                    aria-label={`Убрать позицию ${index + 1}`}
-                    title="Убрать"
+                    aria-label={`Remove item ${index + 1}`}
+                    title="Remove"
                   >
                     ×
                   </button>
                 </div>
-                <div className="eaters" role="group" aria-label="Кто ел">
-                  <span className="muted small">Кто ел:</span>
+                <div className="eaters" role="group" aria-label="Who ate">
+                  <span className="muted small">Who ate:</span>
                   {everyone.map((who) => (
                     <button
                       key={who}
@@ -268,7 +268,7 @@ export default function SplitEditor({ split, amount, onChange }) {
                       aria-pressed={item.eaters.includes(who)}
                       onClick={() => toggleEater(item, who)}
                     >
-                      {who === 'me' ? 'Я' : shortName(who)}
+                      {who === 'me' ? 'Me' : shortName(who)}
                     </button>
                   ))}
                 </div>
@@ -281,15 +281,15 @@ export default function SplitEditor({ split, amount, onChange }) {
               className="secondary"
               onClick={() => update({ items: [...split.items, newItem(everyone)] })}
             >
-              + Позиция
+              + Item
             </button>
           </div>
-          <p className="muted small">Позиция на нескольких человек делится между ними поровну.</p>
+          <p className="muted small">An item shared by several people is split equally between them.</p>
         </div>
       )}
 
       <label className="service">
-        Обслуживание, %
+        Service charge, %
         <input
           type="number"
           inputMode="decimal"
@@ -298,10 +298,10 @@ export default function SplitEditor({ split, amount, onChange }) {
           step="any"
           value={split.tip}
           onChange={(e) => update({ tip: e.target.value })}
-          placeholder="Например, 10"
+          placeholder="For example, 10"
         />
         <span className="muted small">
-          Процент добавится к чеку сверху и поделится пропорционально тому, сколько заказал каждый.
+          The percentage is added to the bill and split in proportion to what each person ordered.
         </span>
       </label>
 
@@ -311,17 +311,17 @@ export default function SplitEditor({ split, amount, onChange }) {
         {preview && (
           <>
             <p className="split-total">
-              Весь чек <b>{money(preview.total)}</b>, ваша доля <b>{money(preview.my_share)}</b>
+              Whole bill <b>{money(preview.total)}</b>, your share <b>{money(preview.my_share)}</b>
             </p>
             {preview.service > 0 && (
-              <p className="muted small split-service">В чек входит обслуживание: {money(preview.service)}</p>
+              <p className="muted small split-service">The bill includes a service charge: {money(preview.service)}</p>
             )}
             <ul className="split-lines">
               {preview.lines.map((line) => (
                 <li key={line.email} className={line.found ? '' : 'missing'}>
                   <span>
                     {line.found ? line.name : line.email}
-                    <small>{line.found ? line.email : 'не найден на сайте: попросите друга зарегистрироваться'}</small>
+                    <small>{line.found ? line.email : 'not found on the site: ask your friend to register'}</small>
                   </span>
                   <b>{money(line.amount)}</b>
                 </li>

@@ -123,7 +123,7 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
   async function createCategory() {
     const name = newCatName.trim()
     if (!name) {
-      setError('Введите название категории')
+      setError('Enter a category name')
       return
     }
     setError('')
@@ -192,12 +192,12 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
         <div className="grid-2">
           {itemsMode ? (
             <div className="amount-auto">
-              <span>Сумма чека</span>
-              <p className="muted small">Посчитается по позициям ниже</p>
+              <span>Bill total</span>
+              <p className="muted small">Calculated from the items below</p>
             </div>
           ) : (
             <label>
-              {splitting ? 'Сумма по чеку, ₸' : 'Сумма, ₸'}
+              {splitting ? 'Bill total, ₸' : 'Amount, ₸'}
               <input
                 type="number"
                 inputMode="decimal"
@@ -226,30 +226,30 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
         {newCatOpen ? (
           <div className="new-cat">
             <label className="new-cat-icon">
-              Значок
+              Icon
               <input value={newCatIcon} maxLength={8} onChange={(e) => setNewCatIcon(e.target.value)} onKeyDown={onNewCatKey} />
             </label>
             <label className="new-cat-name">
-              Название категории
+              Category name
               <input
                 value={newCatName}
                 maxLength={60}
                 onChange={(e) => setNewCatName(e.target.value)}
                 onKeyDown={onNewCatKey}
-                placeholder="Например, кофе"
+                placeholder="For example, coffee"
                 autoFocus
               />
             </label>
             <button type="button" className="secondary" onClick={createCategory}>
-              Создать
+              Create
             </button>
             <button type="button" className="link" onClick={() => setNewCatOpen(false)}>
-              Отмена
+              Cancel
             </button>
           </div>
         ) : (
           <button type="button" className="link start" onClick={() => setNewCatOpen(true)}>
-            Своя категория
+            New category
           </button>
         )}
 
@@ -271,8 +271,8 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
 
         {sharedEdit && (
           <p className="notice">
-            Это общий счёт: весь чек {money(editing.paid_total)}, ваша доля {money(editing.amount)}. Сумму изменить
-            нельзя, но можно поправить категорию, комментарий и дату.
+            This is a shared bill: the whole bill is {money(editing.paid_total)}, your share is {money(editing.amount)}. The
+            amount cannot be changed, but you can edit the category, note and date.
           </p>
         )}
 
@@ -284,7 +284,7 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
                 checked={split.on}
                 onChange={(e) => setSplit({ ...split, on: e.target.checked })}
               />
-              <span>Платил за друзей: они вернут свою долю</span>
+              <span>I paid for friends: they will pay back their share</span>
             </label>
             {split.on && <SplitEditor split={split} amount={amount} onChange={setSplit} />}
           </>
@@ -298,11 +298,11 @@ export default function ExpenseForm({ categories, editing, onSaved, onCancelEdit
 
         <div className="row">
           <button className="primary" type="submit" disabled={busy || !categoryId}>
-            {busy ? 'Сохраняем…' : editing ? 'Сохранить изменения' : 'Добавить'}
+            {busy ? 'Saving…' : editing ? 'Save changes' : 'Add'}
           </button>
           {editing && (
             <button className="link" type="button" onClick={cancelEdit}>
-              Отмена
+              Cancel
             </button>
           )}
         </div>

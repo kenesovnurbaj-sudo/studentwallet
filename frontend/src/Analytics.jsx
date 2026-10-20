@@ -3,7 +3,7 @@ import { money, monthTitle } from './format.js'
 
 const pad = (n) => String(n).padStart(2, '0')
 
-// Куда уходят деньги в текущем месяце. Считается из записей, которые уже загружены.
+// Where the money goes в текущем месяце. Считается из записей, которые уже загружены.
 // Один цвет: категории различаются подписями, а не цветом.
 export default function Analytics({ expenses, categories, month }) {
   const [hover, setHover] = useState(null)
@@ -32,13 +32,13 @@ export default function Analytics({ expenses, categories, month }) {
   }, [spend, daysInMonth])
 
   const dayLabel = (i) =>
-    new Date(`${month}-${pad(i + 1)}T00:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+    new Date(`${month}-${pad(i + 1)}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
 
   if (spend.length === 0) {
     return (
       <section className="block">
-        <h2>Куда уходят деньги</h2>
-        <p className="empty">Графики появятся, когда в этом месяце будут расходы.</p>
+        <h2>Where the money goes</h2>
+        <p className="empty">Charts will appear once there are expenses this month.</p>
       </section>
     )
   }
@@ -51,17 +51,17 @@ export default function Analytics({ expenses, categories, month }) {
 
   return (
     <section className="block">
-      <h2>Куда уходят деньги</h2>
+      <h2>Where the money goes</h2>
       <p className="muted">
-        Расходы за {monthTitle(month)}: {money(total)}
+        Expenses for {monthTitle(month)}: {money(total)}
       </p>
 
-      <h3>По категориям</h3>
+      <h3>By category</h3>
       <ul className="bars">
         {byCategory.map(({ id, sum, cat }) => (
           <li key={id} className="bar-row">
             <span className="bar-name">
-              <span aria-hidden="true">{cat ? cat.icon : '🧾'}</span> {cat ? cat.name : 'Без категории'}
+              <span aria-hidden="true">{cat ? cat.icon : '🧾'}</span> {cat ? cat.name : 'No category'}
             </span>
             <span className="bar-track">
               <span className="bar-fill" style={{ width: `${(sum / byCategory[0].sum) * 100}%` }} />
@@ -73,9 +73,9 @@ export default function Analytics({ expenses, categories, month }) {
         ))}
       </ul>
 
-      <h3>По дням</h3>
+      <h3>By day</h3>
       <p className="muted">
-        Больше всего потрачено {dayLabel(peak)}: {money(maxDay)}
+        Most spent on {dayLabel(peak)}: {money(maxDay)}
       </p>
       <div className="daily" onMouseLeave={() => setHover(null)}>
         <div className="daily-plot">
@@ -111,19 +111,19 @@ export default function Analytics({ expenses, categories, month }) {
       </div>
 
       <details className="table-view">
-        <summary>Показать цифрами</summary>
+        <summary>Show as numbers</summary>
         <table>
-          <caption className="sr-only">Расходы по категориям и по дням</caption>
+          <caption className="sr-only">Spending by category and by day</caption>
           <thead>
             <tr>
-              <th scope="col">Категория</th>
-              <th scope="col">Сумма</th>
+              <th scope="col">Category</th>
+              <th scope="col">Amount</th>
             </tr>
           </thead>
           <tbody>
             {byCategory.map(({ id, sum, cat }) => (
               <tr key={id}>
-                <td>{cat ? cat.name : 'Без категории'}</td>
+                <td>{cat ? cat.name : 'No category'}</td>
                 <td>{money(sum)}</td>
               </tr>
             ))}
@@ -132,8 +132,8 @@ export default function Analytics({ expenses, categories, month }) {
         <table>
           <thead>
             <tr>
-              <th scope="col">День</th>
-              <th scope="col">Сумма</th>
+              <th scope="col">Day</th>
+              <th scope="col">Amount</th>
             </tr>
           </thead>
           <tbody>

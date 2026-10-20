@@ -183,7 +183,7 @@ def test_full_repayment_flow(client):
     b_expenses = client.get("/api/expenses", headers=b).json()
     assert len(b_expenses) == 1
     assert b_expenses[0]["amount"] == 3333
-    assert b_expenses[0]["note"].startswith("Долг:")
+    assert b_expenses[0]["note"].startswith("Debt:")
     assert "кафе" in b_expenses[0]["note"]
 
     summary_a = client.get("/api/debts/summary", headers=a).json()

@@ -114,14 +114,14 @@ def create_expense(
 
     # Вы заплатили за друзей: ваша доля идёт в ваши расходы, доли друзей становятся их долгами вам.
     if data.type != "expense":
-        raise HTTPException(status_code=400, detail="Делить можно только расходы")
+        raise HTTPException(status_code=400, detail="Only expenses can be split")
     result = _compute(user, data.amount, data.split)
     friends = find_users_by_email(db, result.friends.keys())
     missing = [email for email in result.friends if email not in friends]
     if missing:
         raise HTTPException(
             status_code=400,
-            detail=f"Не найдены на сайте: {', '.join(missing)}. Попросите друзей зарегистрироваться",
+            detail=f"Not found on the site: {', '.join(missing)}. Ask your friends to register",
         )
 
     expense = Expense(
@@ -189,7 +189,7 @@ def update_expense(
         if amount_changed or type_changed:
             raise HTTPException(
                 status_code=409,
-                detail="Сумму разделённой траты менять нельзя. Удалите её и создайте заново",
+                detail="The amount of a split expense cannot be changed. Delete it and create it again",
             )
     if "category_id" in changes and changes["category_id"] is not None:
         visible_category(db, user, changes["category_id"])
@@ -211,7 +211,7 @@ def delete_expense(
     if any(share.status != "pending" for share in expense.shares):
         raise HTTPException(
             status_code=409,
-            detail="Эту трату нельзя удалить: по ней друзья уже отметили или вернули деньги",
+            detail="This expense cannot be deleted: friends have already marked it as paid or paid it back",
         )
     db.delete(expense)
     db.commit()
