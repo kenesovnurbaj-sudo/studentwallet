@@ -14,6 +14,7 @@ export default function Dashboard({ user, onLogout }) {
   const [summary, setSummary] = useState(undefined) // undefined = грузится, null = бюджет не задан
   const [filter, setFilter] = useState('')
   const [error, setError] = useState('')
+  const [importOpen, setImportOpen] = useState(false)
 
   const loadSummary = useCallback(async () => {
     try {
@@ -53,6 +54,9 @@ export default function Dashboard({ user, onLogout }) {
       <header className="topbar">
         <span className="wordmark small">StudentWallet</span>
         <span className="who">
+          <button className="secondary" type="button" onClick={() => setImportOpen(true)}>
+            Импорт выписки
+          </button>
           {user.full_name || user.email}
           <button className="link" type="button" onClick={onLogout}>
             Выйти
@@ -68,7 +72,6 @@ export default function Dashboard({ user, onLogout }) {
         )}
         <Hero summary={summary} month={month} onSaved={loadSummary} />
         <ExpenseForm categories={categories} onAdded={refresh} />
-        <ImportStatement categories={categories} onImported={refresh} />
         <ExpenseList
           expenses={expenses}
           categories={categories}
@@ -78,6 +81,9 @@ export default function Dashboard({ user, onLogout }) {
         />
       </main>
 
+      {importOpen && (
+        <ImportStatement categories={categories} onImported={refresh} onClose={() => setImportOpen(false)} />
+      )}
       <Assistant />
     </div>
   )

@@ -28,6 +28,7 @@ class PreviewRow(BaseModel):
     category_id: int
     duplicate: bool  # такая операция уже импортирована раньше
     own_account: bool  # перевод между своими счетами
+    manual_match: bool = False  # есть внесённая вручную запись с той же датой, суммой и типом
 
 
 class PreviewOut(BaseModel):
@@ -60,6 +61,12 @@ def _imported_counts(db: Session, user: User) -> Counter:
     return Counter(_key(e.spent_at, e.amount, e.type, e.note) for e in existing)
 
 
+def _manual_counts(db: Session, user: User) -> Counter:
+    """Записи, добавленные не импортом (вручную или через Siri): сверяем без описания, оно у каждого своё."""
+    manual = db.query(Expense).filter(Expense.user_id == user.id, Expense.source != SOURCE).all()
+    return Counter((e.spent_at, round(float(e.amount), 2), e.type) for e in manual)
+
+
 def _visible_categories(db: Session, user: User) -> list[Category]:
     return db.query(Category).filter(or_(Category.user_id.is_(None), Category.user_id == user.id)).all()
 
@@ -87,11 +94,19 @@ async def preview_kaspi(
     fallback_id = categories.get(FALLBACK_CATEGORY) or next(iter(categories.values()))
 
     already = _imported_counts(db, user)
+    manual = _manual_counts(db, user)
     seen: Counter = Counter()
+    seen_manual: Counter = Counter()
     out = []
     for r in rows:
         k = _key(r.date, r.amount, r.type, r.note)
         seen[k] += 1
+        mk = k[:3]
+        is_dup = seen[k] <= already[k]
+        manual_match = False
+        if not is_dup:
+            seen_manual[mk] += 1
+            manual_match = seen_manual[mk] <= manual[mk]
         out.append(
             PreviewRow(
                 date=r.date,
@@ -99,8 +114,9 @@ async def preview_kaspi(
                 type=r.type,
                 note=r.note,
                 category_id=categories.get(guess_category(r.note), fallback_id),
-                duplicate=seen[k] <= already[k],
+                duplicate=is_dup,
                 own_account=r.own_account,
+                manual_match=manual_match,
             )
         )
     return PreviewOut(rows=out)

@@ -1,14 +1,20 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import { money, shortDate } from './format.js'
 
 // Импорт выписки Kaspi Gold (PDF): загрузка, предпросмотр с правкой категорий, подтверждение.
-export default function ImportStatement({ categories, onImported }) {
+export default function ImportStatement({ categories, onImported, onClose }) {
   const [rows, setRows] = useState(null) // null = файл ещё не загружен
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState('')
   const fileRef = useRef(null)
+
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && !busy && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [busy, onClose])
 
   async function pick(e) {
     const file = e.target.files[0]
@@ -19,8 +25,8 @@ export default function ImportStatement({ categories, onImported }) {
     setBusy(true)
     try {
       const data = await api.importKaspi(file)
-      // Не импортируем по умолчанию: уже загруженные раньше и переводы между своими счетами
-      setRows(data.rows.map((r) => ({ ...r, on: !r.duplicate && !r.own_account })))
+      // Не импортируем по умолчанию: уже загруженные, внесённые вручную и переводы между своими счетами
+      setRows(data.rows.map((r) => ({ ...r, on: !r.duplicate && !r.own_account && !r.manual_match })))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -49,9 +55,15 @@ export default function ImportStatement({ categories, onImported }) {
   }
 
   return (
-    <section className="block">
-      <h2>Импорт выписки Kaspi</h2>
-      <p className="hint">Загрузите PDF-выписку Kaspi Gold на английском: Kaspi.kz → Gold → Выписка. Перед сохранением вы увидите список и сможете поправить категории.</p>
+    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
+    <section className="modal" role="dialog" aria-modal="true" aria-labelledby="import-title">
+      <header className="modal-head">
+        <h2 id="import-title">Импорт выписки Kaspi</h2>
+        <button type="button" className="modal-close" onClick={onClose} disabled={busy} aria-label="Закрыть">
+          ×
+        </button>
+      </header>
+      <p className="hint">Загрузите PDF-выписку Kaspi Gold на английском: Kaspi.kz → Gold → Выписка. Перед сохранением вы увидите список и сможете поправить категории. Уже загруженное повторно не добавится.</p>
 
       <input ref={fileRef} type="file" accept="application/pdf,.pdf" onChange={pick} hidden />
       {!rows && (
@@ -90,6 +102,7 @@ export default function ImportStatement({ categories, onImported }) {
                     <td>
                       {r.note}
                       {r.duplicate && <span className="tag">уже загружено</span>}
+                      {r.manual_match && <span className="tag">возможно, уже внесено вручную</span>}
                       {r.own_account && <span className="tag">между своими счетами</span>}
                     </td>
                     <td>
@@ -121,5 +134,6 @@ export default function ImportStatement({ categories, onImported }) {
         </>
       )}
     </section>
+    </div>
   )
 }

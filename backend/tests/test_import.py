@@ -76,3 +76,17 @@ def test_import_is_per_user_and_requires_auth(client, auth_headers):
 def test_commit_rejects_foreign_category(client, auth_headers):
     row = {"date": "2026-10-01", "amount": 100, "type": "expense", "note": "x", "category_id": 9999}
     assert client.post("/api/import/commit", headers=auth_headers, json={"rows": [row]}).status_code == 400
+
+
+def test_manual_entry_is_flagged(client, auth_headers, monkeypatch):
+    monkeypatch.setattr(imports, "extract_pdf_text", lambda data: SAMPLE)
+    cat = client.get("/api/categories", headers=auth_headers).json()[0]["id"]
+    client.post(
+        "/api/expenses",
+        headers=auth_headers,
+        json={"amount": 13650, "category_id": cat, "type": "expense", "spent_at": "2026-10-20", "note": "ужин"},
+    )
+    rows = client.post("/api/import/kaspi", headers=auth_headers, files={"file": ("s.pdf", b"x")}).json()["rows"]
+    flagged = [r for r in rows if r["manual_match"]]
+    assert len(flagged) == 1 and flagged[0]["note"] == "ИП DANTE"
+    assert not flagged[0]["duplicate"]
