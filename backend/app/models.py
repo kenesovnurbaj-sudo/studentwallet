@@ -1,7 +1,7 @@
 """Модели БД. Соответствуют ER-диаграмме из StudentWallet_project_plan.md (8 таблиц)."""
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -51,8 +51,13 @@ class Expense(Base):
     note: Mapped[str] = mapped_column(String(255), default="")
     spent_at: Mapped[date] = mapped_column(Date, default=date.today, index=True)
     source: Mapped[str] = mapped_column(String(10), default="web")  # web | siri
+    # Если вы заплатили за друзей: amount = ваша доля, paid_total = весь чек. Иначе NULL.
+    paid_total: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
 
     category: Mapped[Category] = relationship()
+    shares: Mapped[list["ExpenseShare"]] = relationship(
+        foreign_keys="ExpenseShare.expense_id", back_populates="expense", cascade="all, delete-orphan"
+    )
 
 
 class Budget(Base):
@@ -98,3 +103,56 @@ class ApiToken(Base):
     token_hash: Mapped[str] = mapped_column(String(255))
     label: Mapped[str] = mapped_column(String(60), default="Shortcuts")
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class MerchantRule(Base):
+    """Запомненная пользователем категория для получателя из выписки («ИП NANGO» -> Еда)."""
+
+    __tablename__ = "merchant_rules"
+    __table_args__ = (UniqueConstraint("user_id", "note", name="uq_merchant_rule"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    note: Mapped[str] = mapped_column(String(255))  # описание в нижнем регистре
+    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+
+
+class AppMeta(Base):
+    """Служебные отметки, например какие разовые миграции данных уже выполнены."""
+
+    __tablename__ = "app_meta"
+
+    key: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255), default="")
+
+
+class ExpenseShare(Base):
+    """Долг друга по общему счёту: payer заплатил, debtor должен вернуть amount.
+
+    Друг может быть без аккаунта (гость): тогда debtor_id пуст, а имя лежит в debtor_name.
+    Гость сам ничего не отмечает, плательщик закрывает долг вручную."""
+
+    __tablename__ = "expense_shares"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    expense_id: Mapped[int] = mapped_column(ForeignKey("expenses.id", ondelete="CASCADE"), index=True)
+    payer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    debtor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
+    debtor_name: Mapped[str | None] = mapped_column(String(60), nullable=True)  # имя гостя без аккаунта
+    amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    # pending - ждёт возврата, marked_paid - друг нажал «Я оплатил», settled - плательщик подтвердил
+    status: Mapped[str] = mapped_column(String(12), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    marked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # напоминания о долге (только для друзей с аккаунтом: они видят их у себя)
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    remind_count: Mapped[int] = mapped_column(Integer, default=0)
+    # запись о расходе в бюджете друга, появляется, когда он отметил возврат
+    debtor_expense_id: Mapped[int | None] = mapped_column(
+        ForeignKey("expenses.id", ondelete="SET NULL"), nullable=True
+    )
+
+    expense: Mapped[Expense] = relationship(foreign_keys=[expense_id], back_populates="shares")
+    payer: Mapped[User] = relationship(foreign_keys=[payer_id])
+    debtor: Mapped[User | None] = relationship(foreign_keys=[debtor_id])

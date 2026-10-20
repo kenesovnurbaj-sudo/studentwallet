@@ -1,9 +1,10 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import User
+from .models import Category, User
 from .security import decode_access_token
 
 bearer = HTTPBearer(auto_error=False)
@@ -28,3 +29,19 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role.name != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     return user
+
+
+def visible_category(db: Session, user: User, category_id: int) -> Category:
+    """Категория, которую пользователь имеет право использовать: глобальная или своя личная.
+
+    Чужая личная и несуществующая категория дают одинаковый ответ 400,
+    чтобы нельзя было перебором узнать id чужих категорий.
+    """
+    category = (
+        db.query(Category)
+        .filter(Category.id == category_id, or_(Category.user_id.is_(None), Category.user_id == user.id))
+        .first()
+    )
+    if category is None:
+        raise HTTPException(status_code=400, detail="Unknown category")
+    return category

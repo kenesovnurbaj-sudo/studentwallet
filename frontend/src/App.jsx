@@ -27,7 +27,7 @@ export default function App() {
     setUser(null)
   }
 
-  if (checking) return <div className="boot">Загружаем…</div>
+  if (checking) return <div className="boot">Loading…</div>
   if (!user) return <AuthPage onAuth={setUser} />
   return <Dashboard user={user} onLogout={logout} />
 }
