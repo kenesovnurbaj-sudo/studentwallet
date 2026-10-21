@@ -1,4 +1,5 @@
 from datetime import date
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_
@@ -7,7 +8,8 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user
 from ..models import Category, Expense, User
-from ..schemas import ExpenseCreate, ExpenseOut, ExpenseUpdate
+from .imports import remember_choices
+from ..schemas import BulkCategoryChange, BulkCategoryResult, ExpenseCreate, ExpenseOut, ExpenseUpdate
 
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
 
@@ -61,6 +63,29 @@ def create_expense(
     db.commit()
     db.refresh(expense)
     return expense
+
+
+@router.post("/bulk-category", response_model=BulkCategoryResult)
+def bulk_change_category(
+    data: BulkCategoryChange,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Меняет категорию сразу у нескольких своих записей. Выбор запоминается для будущих импортов выписки."""
+    _check_category(db, user, data.category_id)
+    ids = set(data.ids)
+    items = db.query(Expense).filter(Expense.id.in_(ids)).all()
+    if len(items) != len(ids):
+        raise HTTPException(status_code=404, detail="Expense not found")
+    if any(e.user_id != user.id for e in items):
+        raise HTTPException(status_code=403, detail="Not your expense")
+    for e in items:
+        e.category_id = data.category_id
+    remember_choices(
+        db, user, [SimpleNamespace(note=e.note, type=e.type, category_id=data.category_id) for e in items]
+    )
+    db.commit()
+    return BulkCategoryResult(updated=len(items))
 
 
 @router.put("/{expense_id}", response_model=ExpenseOut)

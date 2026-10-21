@@ -6,3 +6,5 @@ bcrypt>=4.1
 PyJWT>=2.8
 pytest>=8.0
 httpx>=0.27
+pypdf>=4.0
+python-multipart>=0.0.9

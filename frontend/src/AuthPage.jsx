@@ -38,20 +38,20 @@ export default function AuthPage({ onAuth }) {
     <main className="auth">
       <div className="auth-intro">
         <h1 className="wordmark">StudentWallet</h1>
-        <p>Записывайте траты за десять секунд и всегда знайте, сколько можно потратить сегодня.</p>
+        <p>Log your spending in ten seconds and always know how much you can spend today.</p>
       </div>
 
       <form className="auth-form" onSubmit={submit}>
-        <h2>{isRegister ? 'Создать аккаунт' : 'Войти'}</h2>
+        <h2>{isRegister ? 'Create account' : 'Log in'}</h2>
 
         {isRegister && (
           <label>
-            Имя
+            Name
             <input
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               autoComplete="name"
-              placeholder="Как вас зовут"
+              placeholder="What should we call you?"
             />
           </label>
         )}
@@ -69,7 +69,7 @@ export default function AuthPage({ onAuth }) {
         </label>
 
         <label>
-          Пароль
+          Password
           <input
             type="password"
             required
@@ -77,7 +77,7 @@ export default function AuthPage({ onAuth }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete={isRegister ? 'new-password' : 'current-password'}
-            placeholder="Не короче 8 символов"
+            placeholder="At least 8 characters"
           />
         </label>
 
@@ -88,11 +88,11 @@ export default function AuthPage({ onAuth }) {
         )}
 
         <button className="primary" type="submit" disabled={busy}>
-          {busy ? 'Подождите…' : isRegister ? 'Создать аккаунт' : 'Войти'}
+          {busy ? 'Please wait…' : isRegister ? 'Create account' : 'Log in'}
         </button>
 
         <button className="link" type="button" onClick={switchMode}>
-          {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+          {isRegister ? 'Already have an account? Log in' : 'No account? Sign up'}
         </button>
       </form>
     </main>

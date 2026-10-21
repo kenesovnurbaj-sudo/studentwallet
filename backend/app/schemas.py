@@ -59,6 +59,15 @@ class ExpenseUpdate(BaseModel):
     spent_at: date | None = None
 
 
+class BulkCategoryChange(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=1000)
+    category_id: int
+
+
+class BulkCategoryResult(BaseModel):
+    updated: int
+
+
 class ExpenseOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -86,6 +95,20 @@ class BudgetOut(BaseModel):
     category_id: int | None
 
 
+class SplitItemIn(BaseModel):
+    category_id: int
+    limit_amount: float = Field(gt=0)
+
+
+class BudgetSplitSet(BaseModel):
+    month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    items: list[SplitItemIn] = Field(min_length=1, max_length=30)
+
+
+class BudgetSplitSaved(BaseModel):
+    saved: int
+
+
 class BudgetSummary(BaseModel):
     month: str
     limit: float
@@ -94,3 +117,35 @@ class BudgetSummary(BaseModel):
     percent_used: float
     days_left: int
     daily_limit: float
+
+
+class CategoryBalance(BaseModel):
+    category_id: int
+    category: str
+    icon: str
+    limit: float | None  # None = лимит на категорию не задан
+    spent: float
+    remaining: float | None
+    percent_used: float | None
+    status: str  # ok | watch | over | no_limit
+
+
+class AlertOut(BaseModel):
+    code: str
+    level: str
+    message: str
+
+
+class ForecastOut(BaseModel):
+    month: str
+    limit: float
+    spent: float
+    days_in_month: int
+    days_elapsed: int
+    daily_average: float | None
+    projected_total: float | None
+    run_out_date: date | None
+    days_early: int | None
+    safe_daily_limit: float | None
+    level: str
+    alerts: list[AlertOut]

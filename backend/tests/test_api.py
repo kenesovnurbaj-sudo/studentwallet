@@ -154,3 +154,107 @@ def test_admin_can_list_and_block_users(client, admin_headers):
 
     r = client.post("/api/auth/login", json={"email": "s@example.com", "password": "password123"})
     assert r.status_code == 403
+
+
+def test_assistant_requires_auth(client):
+    assert client.post("/api/assistant/chat", json={"messages": [{"role": "user", "content": "hi"}]}).status_code == 401
+
+
+def test_assistant_reply_gets_user_context(client, auth_headers, monkeypatch):
+    from app.routers import assistant
+
+    cat = first_category_id(client, auth_headers)
+    client.post("/api/expenses", headers=auth_headers, json={"amount": 1500, "category_id": cat, "note": "обед"})
+    client.put("/api/budgets", headers=auth_headers, json={"month": date.today().strftime("%Y-%m"), "limit_amount": 60000})
+
+    sent = {}
+
+    def fake_ollama(messages):
+        sent["messages"] = messages
+        return "Ответ ассистента"
+
+    monkeypatch.setattr(assistant, "ask_ollama", fake_ollama)
+    resp = client.post(
+        "/api/assistant/chat", headers=auth_headers, json={"messages": [{"role": "user", "content": "Как мои траты?"}]}
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"reply": "Ответ ассистента"}
+    system = sent["messages"][0]
+    assert system["role"] == "system"
+    assert "1500" in system["content"] and "60000" in system["content"] and "обед" in system["content"]
+    assert "student@example.com" not in system["content"]
+
+
+def test_assistant_unavailable_returns_503(client, auth_headers, monkeypatch):
+    from app.routers import assistant
+
+    monkeypatch.setattr(assistant, "OLLAMA_URL", "http://127.0.0.1:9")  # там никого нет
+    resp = client.post(
+        "/api/assistant/chat", headers=auth_headers, json={"messages": [{"role": "user", "content": "привет"}]}
+    )
+    assert resp.status_code == 503
+
+
+def test_assistant_last_message_must_be_user(client, auth_headers):
+    resp = client.post(
+        "/api/assistant/chat", headers=auth_headers, json={"messages": [{"role": "assistant", "content": "привет"}]}
+    )
+    assert resp.status_code == 400
+
+
+def test_bulk_change_category(client, auth_headers):
+    cats = client.get("/api/categories", headers=auth_headers).json()
+    a, b = cats[0]["id"], cats[1]["id"]
+    ids = [
+        client.post("/api/expenses", headers=auth_headers, json={"amount": 100 + i, "category_id": a, "note": "ИП NANGO"}).json()["id"]
+        for i in range(3)
+    ]
+    resp = client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": ids, "category_id": b})
+    assert resp.status_code == 200 and resp.json() == {"updated": 3}
+    assert {e["category_id"] for e in client.get("/api/expenses", headers=auth_headers).json()} == {b}
+
+
+def test_bulk_change_category_rejects_foreign_and_unknown(client, auth_headers):
+    cat = first_category_id(client, auth_headers)
+    other = register_and_login(client, "other@example.com")
+    foreign = client.post("/api/expenses", headers=other, json={"amount": 5, "category_id": cat}).json()["id"]
+    mine = client.post("/api/expenses", headers=auth_headers, json={"amount": 5, "category_id": cat}).json()["id"]
+    assert client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": [mine, foreign], "category_id": cat}).status_code == 403
+    assert client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": [mine, 99999], "category_id": cat}).status_code == 404
+    assert client.post("/api/expenses/bulk-category", headers=auth_headers, json={"ids": [mine], "category_id": 99999}).status_code == 400
+    assert client.post("/api/expenses/bulk-category", json={"ids": [mine], "category_id": cat}).status_code == 401
+
+
+def test_category_balances(client, auth_headers):
+    month = date.today().strftime("%Y-%m")
+    cats = {c["name"]: c["id"] for c in client.get("/api/categories", headers=auth_headers).json()}
+    client.put(
+        "/api/budgets/split",
+        headers=auth_headers,
+        json={"month": month, "items": [{"category_id": cats["Food"], "limit_amount": 10000}, {"category_id": cats["Transport"], "limit_amount": 5000}]},
+    )
+
+    def add(amount, cat, type_="expense", spent_at=None):
+        body = {"amount": amount, "category_id": cats[cat], "type": type_}
+        if spent_at:
+            body["spent_at"] = spent_at
+        client.post("/api/expenses", headers=auth_headers, json=body)
+
+    add(8500, "Food")  # 85% -> watch
+    add(6000, "Transport")  # больше лимита -> over
+    add(1200, "Entertainment")  # лимита нет
+    add(50000, "Food", type_="income")  # доходы не считаются
+    add(999, "Food", spent_at="2020-01-01")  # другой месяц не считается
+
+    rows = {r["category"]: r for r in client.get("/api/budget/categories", headers=auth_headers).json()}
+    assert set(rows) == {"Food", "Transport", "Entertainment"}
+    assert (rows["Food"]["spent"], rows["Food"]["remaining"], rows["Food"]["status"]) == (8500, 1500, "watch")
+    assert (rows["Transport"]["remaining"], rows["Transport"]["status"]) == (-1000, "over")
+    assert (rows["Entertainment"]["limit"], rows["Entertainment"]["status"]) == (None, "no_limit")
+    order = [r["category"] for r in client.get("/api/budget/categories", headers=auth_headers).json()]
+    assert order == ["Food", "Transport", "Entertainment"]  # больше трат сверху
+
+
+def test_category_balances_empty_and_auth(client, auth_headers):
+    assert client.get("/api/budget/categories", headers=auth_headers).json() == []
+    assert client.get("/api/budget/categories").status_code == 401
